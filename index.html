@@ -113,6 +113,7 @@
     font-weight: 600; display: flex; align-items: center; gap: 6px;
   }
   .tile .big { font-size: 1.7rem; font-weight: 700; letter-spacing: -.02em; margin-top: 6px; line-height: 1.1; }
+  .tile .big.neg { color: var(--med); }
   .tile .sub { font-size: .78rem; color: var(--muted); margin-top: 3px; }
   .tile.next .big { font-size: 1.06rem; font-weight: 650; }
   .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
@@ -163,6 +164,33 @@
     padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted);
   }
   .sync-badge.on { background: var(--train-soft); color: var(--train); }
+
+  /* ---------- Dinero: resumen, presupuesto, gráfico ---------- */
+  .money-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .money-stat { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 11px; text-align: center; }
+  .ms-lbl { font-size: .7rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; }
+  .ms-val { font-size: 1.02rem; font-weight: 700; margin-top: 3px; letter-spacing: -.01em; }
+  .ms-val.in { color: var(--train); }
+  .ms-val.out { color: var(--med); }
+  .ms-val.neg { color: var(--med); }
+  .ms-val.pos { color: var(--train); }
+
+  .budget { margin-top: 16px; }
+  .budget-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .bar-track { height: 12px; border-radius: 999px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--border); }
+  .bar-fill { height: 100%; width: 0; border-radius: 999px; background: var(--train); transition: width .4s ease; }
+  .bar-fill.warn { background: #e0a83a; }
+  .bar-fill.over { background: var(--med); }
+  .budget-info { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: .82rem; color: var(--muted); }
+  .budget-info .over-txt { color: var(--med); font-weight: 600; }
+
+  #catChart { display: flex; flex-direction: column; gap: 9px; }
+  .cat-row { display: grid; grid-template-columns: 90px 1fr auto; gap: 9px; align-items: center; font-size: .82rem; }
+  .cat-name { color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cat-bar { height: 9px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .cat-bar > span { display: block; height: 100%; border-radius: 999px; background: var(--accent); }
+  .cat-amt { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .item .amount.in { color: var(--train); }
 
   /* ---------- Tabs ---------- */
   .tabs {
@@ -308,9 +336,9 @@
   <!-- Summary -->
   <div class="tiles">
     <div class="tile">
-      <div class="lbl"><span class="dot" style="background:var(--accent)"></span>Gastado este mes</div>
+      <div class="lbl"><span class="dot" style="background:var(--accent)"></span>Balance del mes</div>
       <div class="big num" id="sumMonth">$0</div>
-      <div class="sub" id="sumCount">Sin gastos aún</div>
+      <div class="sub" id="sumCount">Sin movimientos aún</div>
     </div>
     <div class="tile next">
       <div class="lbl"><span class="dot" style="background:var(--med)"></span>Próximo evento</div>
@@ -330,16 +358,20 @@
 
   <!-- Tabs -->
   <div class="tabs" role="tablist">
-    <button role="tab" aria-selected="true" data-tab="gastos">Gastos</button>
+    <button role="tab" aria-selected="true" data-tab="gastos">Dinero</button>
     <button role="tab" aria-selected="false" data-tab="eventos">Eventos</button>
     <button role="tab" aria-selected="false" data-tab="datos">Datos</button>
   </div>
 
-  <!-- ===== GASTOS ===== -->
+  <!-- ===== DINERO ===== -->
   <section class="panel active" id="p-gastos">
     <div class="card">
-      <h2>Agregar gasto</h2>
+      <h2 id="expFormTitle">Agregar movimiento</h2>
       <form id="expForm">
+        <div class="seg" id="expKind">
+          <button type="button" class="seg-btn active" data-kind="out">💸 Gasto</button>
+          <button type="button" class="seg-btn" data-kind="in">💰 Ingreso</button>
+        </div>
         <div class="row">
           <div class="field">
             <label class="f" for="expAmount">Monto</label>
@@ -347,10 +379,7 @@
           </div>
           <div class="field">
             <label class="f" for="expCat">Categoría</label>
-            <select id="expCat">
-              <option>Comida</option><option>Transporte</option><option>Salud</option>
-              <option>Hogar</option><option>Ocio</option><option>Servicios</option><option>Otros</option>
-            </select>
+            <select id="expCat"></select>
           </div>
         </div>
         <div class="row">
@@ -363,9 +392,38 @@
             <input id="expNote" type="text" placeholder="Ej: super, farmacia..." />
           </div>
         </div>
-        <button class="btn" type="submit">Guardar gasto</button>
+        <div class="data-actions">
+          <button class="btn" type="submit" id="expSubmit">Guardar</button>
+          <button class="btn ghost" type="button" id="expCancel" hidden>Cancelar</button>
+        </div>
       </form>
     </div>
+
+    <div class="card" id="moneyCard">
+      <h2>Este mes</h2>
+      <div class="money-row">
+        <div class="money-stat"><div class="ms-lbl">Ingresos</div><div class="ms-val in num" id="mIn">$0</div></div>
+        <div class="money-stat"><div class="ms-lbl">Gastos</div><div class="ms-val out num" id="mOut">$0</div></div>
+        <div class="money-stat"><div class="ms-lbl">Balance</div><div class="ms-val num" id="mBal">$0</div></div>
+      </div>
+
+      <div class="budget" id="budgetBox">
+        <div class="budget-head">
+          <span class="f" style="text-transform:none">Presupuesto de gastos</span>
+          <button class="mini" id="budgetSet">Definir</button>
+        </div>
+        <div id="budgetBar" hidden>
+          <div class="bar-track"><div class="bar-fill" id="budgetFill"></div></div>
+          <div class="budget-info"><span id="budgetText" class="num"></span><button class="mini" id="budgetEdit">Editar</button></div>
+        </div>
+      </div>
+
+      <div id="chartBox">
+        <div class="group-label" style="margin:14px 2px 8px">En qué gastás</div>
+        <div id="catChart"></div>
+      </div>
+    </div>
+
     <div id="expList"></div>
   </section>
 
@@ -486,13 +544,13 @@
       var d = JSON.parse(localStorage.getItem(KEY));
       if (d && typeof d === "object") return normalize(d);
     } catch (e) {}
-    return { name: "", expenses: [], events: [] };
+    return { name: "", budget: 0, expenses: [], events: [] };
   }
 
   // Normaliza datos y migra eventos viejos (fecha/hora) al nuevo formato con "slots".
   function normalize(d) {
     d = d || {};
-    var out = { name: d.name || "", expenses: [], events: [] };
+    var out = { name: d.name || "", budget: +d.budget || 0, expenses: [], events: [] };
     if (Array.isArray(d.expenses)) out.expenses = d.expenses;
     if (Array.isArray(d.events)) out.events = d.events.map(migrateEvent);
     return out;
@@ -602,7 +660,8 @@
     train: { name: "Entrenamiento", cls: "train", icon: "🏋️" },
     other: { name: "Otro", cls: "other", icon: "📌" }
   };
-  var CAT_ICON = { Comida:"🍽️", Transporte:"🚌", Salud:"💊", Hogar:"🏠", Ocio:"🎬", Servicios:"💡", Otros:"🧾" };
+  var CAT_ICON = { Comida:"🍽️", Transporte:"🚌", Salud:"💊", Hogar:"🏠", Ocio:"🎬", Servicios:"💡", Otros:"🧾",
+    Sueldo:"💼", Venta:"🏷️", Regalo:"🎁" };
 
   // ---------- refs ----------
   var $ = function (id) { return document.getElementById(id); };
@@ -652,32 +711,114 @@
     });
   }
 
-  // ---------- expenses ----------
+  // ---------- dinero: gastos e ingresos ----------
+  var CATS_OUT = ["Comida","Transporte","Salud","Hogar","Ocio","Servicios","Otros"];
+  var CATS_IN = ["Sueldo","Venta","Regalo","Otros"];
+  var expKind = "out";
+
+  function fillCats() {
+    var cats = expKind === "in" ? CATS_IN : CATS_OUT;
+    $("expCat").innerHTML = cats.map(function (c) { return '<option>' + c + '</option>'; }).join("");
+  }
+  fillCats();
+
+  $("expKind").addEventListener("click", function (e) {
+    var b = e.target.closest(".seg-btn"); if (!b) return;
+    expKind = b.dataset.kind;
+    document.querySelectorAll("#expKind .seg-btn").forEach(function (x) { x.classList.toggle("active", x === b); });
+    fillCats();
+  });
+
   $("expForm").addEventListener("submit", function (e) {
     e.preventDefault();
     var amt = parseFloat($("expAmount").value);
-    if (isNaN(amt) || amt < 0) return;
-    data.expenses.push({ id: uid(), amount: amt, cat: $("expCat").value, date: $("expDate").value, note: $("expNote").value.trim() });
+    if (isNaN(amt) || amt <= 0) { $("expAmount").focus(); return; }
+    data.expenses.push({ id: uid(), kind: expKind, amount: amt, cat: $("expCat").value, date: $("expDate").value, note: $("expNote").value.trim() });
     save();
     $("expAmount").value = ""; $("expNote").value = "";
-    renderAll(); toast("Gasto guardado");
+    renderAll();
+    toast(expKind === "in" ? "💰 Ingreso guardado" : "💸 Gasto guardado");
   });
+
+  function isIncome(x) { return x.kind === "in"; }
 
   function renderExpenses() {
     var box = $("expList");
     var list = data.expenses.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
-    if (!list.length) { box.innerHTML = emptyBox("💸", "Todavía no cargaste gastos"); return; }
+    if (!list.length) { box.innerHTML = emptyBox("💸", "Todavía no cargaste nada"); return; }
     var html = "";
     list.forEach(function (x) {
+      var inc = isIncome(x);
       html += '<div class="item">' +
-        '<div class="lead" style="background:var(--surface-2)">' + (CAT_ICON[x.cat]||"🧾") + '</div>' +
+        '<div class="lead" style="background:var(--surface-2)">' + (inc ? (CAT_ICON[x.cat] || "💰") : (CAT_ICON[x.cat] || "🧾")) + '</div>' +
         '<div class="body"><div class="title">' + (esc(x.note) || x.cat) + '</div>' +
-        '<div class="meta"><span class="chip cat">' + x.cat + '</span><span>' + fmtDate(x.date) + '</span></div></div>' +
-        '<div class="amount num">' + fmt(x.amount) + '</div>' +
+        '<div class="meta"><span class="chip cat">' + (inc ? "Ingreso · " : "") + x.cat + '</span><span>' + fmtDate(x.date) + '</span></div></div>' +
+        '<div class="amount num' + (inc ? ' in' : '') + '">' + (inc ? "+" : "−") + fmt(x.amount) + '</div>' +
         delBtn("exp", x.id) + '</div>';
     });
     box.innerHTML = html;
   }
+
+  // ---------- resumen de dinero + presupuesto + gráfico ----------
+  function monthTotals() {
+    var ym = new Date().getFullYear() + "-" + pad(new Date().getMonth() + 1);
+    var inc = 0, out = 0, byCat = {};
+    data.expenses.forEach(function (x) {
+      if ((x.date || "").slice(0, 7) !== ym) return;
+      if (isIncome(x)) { inc += x.amount; }
+      else { out += x.amount; byCat[x.cat] = (byCat[x.cat] || 0) + x.amount; }
+    });
+    return { inc: inc, out: out, byCat: byCat };
+  }
+
+  function renderMoney() {
+    var t = monthTotals(), bal = t.inc - t.out;
+    $("mIn").textContent = fmt(t.inc);
+    $("mOut").textContent = fmt(t.out);
+    var mb = $("mBal");
+    mb.textContent = (bal < 0 ? "−" : "") + fmt(Math.abs(bal)).replace("-", "");
+    mb.className = "ms-val num " + (bal < 0 ? "neg" : "pos");
+
+    // presupuesto
+    var budget = +data.budget || 0;
+    if (budget > 0) {
+      $("budgetSet").hidden = true; $("budgetBar").hidden = false;
+      var pct = Math.min(100, Math.round(t.out / budget * 100));
+      var fill = $("budgetFill");
+      fill.style.width = pct + "%";
+      fill.className = "bar-fill" + (t.out > budget ? " over" : (t.out >= budget * 0.8 ? " warn" : ""));
+      var left = budget - t.out;
+      $("budgetText").innerHTML = t.out > budget
+        ? '<span class="over-txt">¡Te pasaste ' + fmt(t.out - budget) + '!</span> (' + fmt(t.out) + ' de ' + fmt(budget) + ')'
+        : fmt(t.out) + ' de ' + fmt(budget) + ' · te queda ' + fmt(left);
+    } else {
+      $("budgetSet").hidden = false; $("budgetBar").hidden = true;
+    }
+
+    // gráfico por categoría
+    var cats = Object.keys(t.byCat).sort(function (a, b) { return t.byCat[b] - t.byCat[a]; });
+    var box = $("catChart");
+    if (!cats.length) { box.innerHTML = '<div class="empty" style="padding:16px">Sin gastos este mes</div>'; return; }
+    var max = t.byCat[cats[0]];
+    box.innerHTML = cats.map(function (c) {
+      var w = Math.max(4, Math.round(t.byCat[c] / max * 100));
+      return '<div class="cat-row"><span class="cat-name">' + (CAT_ICON[c] || "") + " " + c + '</span>' +
+        '<span class="cat-bar"><span style="width:' + w + '%"></span></span>' +
+        '<span class="cat-amt">' + fmt(t.byCat[c]) + '</span></div>';
+    }).join("");
+  }
+
+  function setBudget() {
+    var cur = +data.budget || 0;
+    var v = prompt("¿Cuánto querés gastar como máximo por mes? (poné 0 para quitarlo)", cur || "");
+    if (v === null) return;
+    var n = parseFloat(v);
+    data.budget = isNaN(n) || n < 0 ? 0 : n;
+    save(); renderMoney();
+    toast(data.budget ? "Presupuesto guardado" : "Presupuesto quitado");
+  }
+  $("budgetSet").addEventListener("click", setBudget);
+  $("budgetEdit").addEventListener("click", setBudget);
 
   // ---------- events: formulario con varios días/horarios ----------
   var repMode = "once";
@@ -907,11 +1048,11 @@
 
   // ---------- summary ----------
   function renderSummary() {
-    var now = new Date(), ym = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
-    var total = 0, count = 0;
-    data.expenses.forEach(function (x) { if ((x.date||"").slice(0,7) === ym) { total += x.amount; count++; } });
-    $("sumMonth").textContent = fmt(total);
-    $("sumCount").textContent = count ? count + (count === 1 ? " gasto este mes" : " gastos este mes") : "Sin gastos este mes";
+    var t = monthTotals(), bal = t.inc - t.out;
+    var count = data.expenses.filter(function (x) { return (x.date || "").slice(0, 7) === (new Date().getFullYear() + "-" + pad(new Date().getMonth() + 1)); }).length;
+    $("sumMonth").textContent = (bal < 0 ? "−" : "") + fmt(Math.abs(bal));
+    $("sumMonth").className = "big num " + (bal < 0 ? "neg" : "");
+    $("sumCount").textContent = count ? ("Gastaste " + fmt(t.out) + (t.inc ? " · entró " + fmt(t.inc) : "")) : "Sin movimientos este mes";
 
     var up = data.events.map(function (ev) { return { ev: ev, occ: eventNextOcc(ev, now) }; })
       .filter(function (u) { return u.occ; })
@@ -926,7 +1067,7 @@
     }
   }
 
-  function renderAll() { renderSummary(); renderToday(); renderExpenses(); renderEvents(); }
+  function renderAll() { renderSummary(); renderMoney(); renderToday(); renderExpenses(); renderEvents(); }
 
   // ---------- delete ----------
   document.addEventListener("click", function (e) {
@@ -956,8 +1097,8 @@
         var d = JSON.parse(r.result);
         if (!d || !Array.isArray(d.expenses) || !Array.isArray(d.events)) throw 0;
         if (!confirm("Esto reemplazará los datos de esta PC por los del archivo. ¿Continuar?")) return;
-        data = { name: d.name || data.name, expenses: d.expenses, events: d.events };
-        save(); $("greet").textContent = "Hola, " + data.name; renderAll(); toast("Datos importados");
+        var prev = data.name; data = normalize(d); if (!data.name) data.name = prev;
+        save(); $("greet").textContent = "Hola, " + (data.name || "Santi"); renderAll(); toast("Datos importados");
       } catch (err) { alert("El archivo no es válido. Usá uno exportado desde esta app."); }
     };
     r.readAsText(file); e.target.value = "";
@@ -998,7 +1139,7 @@
 
   function pushCloud() {
     if (!docRef) return;
-    try { docRef.set({ name: data.name, expenses: data.expenses, events: data.events, _ts: Date.now() }); } catch (e) {}
+    try { docRef.set({ name: data.name, budget: +data.budget || 0, expenses: data.expenses, events: data.events, _ts: Date.now() }); } catch (e) {}
   }
 
   function afterRemote() {
