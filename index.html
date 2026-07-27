@@ -243,6 +243,20 @@
   }
   #lightbox[hidden] { display: none; }
   #lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }
+
+  /* ---------- Candado (código al abrir) ---------- */
+  #applock { position: fixed; inset: 0; background: var(--bg); z-index: 80; display: grid; place-items: center; padding: 24px; }
+  #applock[hidden] { display: none; }
+  #applock .lock-box { width: 100%; max-width: 320px; text-align: center; }
+  #applock .lock-mark { width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 16px; background: linear-gradient(150deg, var(--accent), var(--accent-ink)); display: grid; place-items: center; color: #fff; box-shadow: var(--shadow); }
+  #applock .lock-mark svg { width: 28px; height: 28px; }
+  #applock h2 { margin: 0 0 4px; font-size: 1.3rem; letter-spacing: -.02em; }
+  #applock p { margin: 0 0 18px; color: var(--muted); font-size: .9rem; }
+  #applock form { display: grid; gap: 12px; }
+  .lock-remember { display: flex; align-items: center; gap: 8px; font-size: .82rem; color: var(--muted); justify-content: center; cursor: pointer; }
+  .lock-remember input { width: auto; }
+  .lock-err { color: var(--med); font-size: .82rem; font-weight: 600; }
+  .lock-err[hidden] { display: none; }
   #lightbox .lb-close { position: absolute; top: 14px; right: 16px; color: #fff; font-size: 2rem; background: none; border: 0; cursor: pointer; line-height: 1; }
 
   /* ---------- Tabs ---------- */
@@ -600,6 +614,10 @@
         <span class="sync-badge" id="syncBadge">Sin conectar</span>
       </div>
       <p class="note" id="syncStatus" style="margin-top:11px">Con esto, entrás desde cualquier aparato con el mismo código y ves siempre lo último.</p>
+      <div class="data-actions" style="margin-top:12px">
+        <button class="btn sm ghost" id="lockNow">🔒 Bloquear ahora</button>
+      </div>
+      <p class="note" style="margin-top:8px">Al abrir la app pide tu código. “Bloquear ahora” hace que este aparato vuelva a pedirlo la próxima vez.</p>
     </div>
     <div class="card">
       <h2>Tus datos</h2>
@@ -635,6 +653,22 @@
 </div>
 
 <div id="lightbox" hidden><button class="lb-close" id="lbClose" aria-label="Cerrar">✕</button><img id="lbImg" alt="adjunto" /></div>
+
+<div id="applock" hidden>
+  <div class="lock-box">
+    <div class="lock-mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+    </div>
+    <h2>Tu Panel</h2>
+    <p>Ingresá tu código para entrar</p>
+    <form id="applockForm">
+      <input id="applockInput" type="password" placeholder="Código secreto" autocomplete="off" />
+      <label class="lock-remember"><input type="checkbox" id="applockRemember" checked /> Recordar en este aparato</label>
+      <button class="btn" type="submit" id="applockBtn">Entrar</button>
+      <div id="applockErr" class="lock-err" hidden></div>
+    </form>
+  </div>
+</div>
 
 <!-- Firebase (solo carga en el sitio web; en la vista previa de Claude no, y no pasa nada) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
@@ -1477,10 +1511,55 @@
   $("syncConnect").addEventListener("click", function () { connectSync($("syncCode").value); });
   $("syncDisconnect").addEventListener("click", disconnectSync);
 
-  // auto-conectar si ya guardaste un código antes
+  // ---------- candado: pedir código al abrir ----------
+  var TRUST_KEY = "miPanel_trusted";
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+
+  function showApplock() { $("applockErr").hidden = true; $("applock").hidden = false; setTimeout(function () { try { $("applockInput").focus(); } catch (e) {} }, 60); }
+  function hideApplock() { $("applock").hidden = true; }
+  function lockErr(msg) { var e = $("applockErr"); e.textContent = msg; e.hidden = false; }
+
+  function tryUnlock() {
+    var code = ($("applockInput").value || "").trim();
+    var remember = $("applockRemember").checked;
+    if (!code) { $("applockInput").focus(); return; }
+    $("applockErr").hidden = true;
+    var saved = lsGet(SYNC_KEY);
+    if (saved) { // este aparato ya conocía un código (funciona sin internet)
+      if (code === saved) doUnlock(code, remember); else lockErr("Código incorrecto");
+      return;
+    }
+    if (!initFirebase()) { lockErr("Sin conexión para verificar. Entrá con internet la primera vez."); return; }
+    $("applockBtn").textContent = "Verificando…";
+    db.collection("paneles").doc(code).get().then(function (snap) {
+      $("applockBtn").textContent = "Entrar";
+      if (snap.exists) doUnlock(code, remember); else lockErr("Código incorrecto");
+    }).catch(function () { $("applockBtn").textContent = "Entrar"; lockErr("No se pudo verificar, probá de nuevo"); });
+  }
+  function doUnlock(code, remember) {
+    lsSet(SYNC_KEY, code);
+    if (remember) lsSet(TRUST_KEY, "1"); else lsDel(TRUST_KEY);
+    $("applockInput").value = "";
+    hideApplock();
+    $("syncCode").value = code;
+    connectSync(code);
+  }
+  $("applockForm").addEventListener("submit", function (e) { e.preventDefault(); tryUnlock(); });
+  $("applockBtn").addEventListener("click", function (e) { e.preventDefault(); tryUnlock(); });
+  $("lockNow").addEventListener("click", function () { lsDel(TRUST_KEY); showApplock(); });
+
+  // Decidir al abrir: aparato confiable entra directo; si no, pide el código.
   (function () {
-    var saved = null; try { saved = localStorage.getItem(SYNC_KEY); } catch (e) {}
-    if (saved) { $("syncCode").value = saved; connectSync(saved); }
+    var savedCode = lsGet(SYNC_KEY);
+    if (savedCode) $("syncCode").value = savedCode;
+    if (lsGet(TRUST_KEY) === "1") {
+      hideApplock();
+      if (savedCode) connectSync(savedCode);
+    } else {
+      showApplock();
+    }
   })();
 
   // ---------- helpers ----------
