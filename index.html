@@ -1,0 +1,762 @@
+<title>Mi Panel · Gastos y Eventos</title>
+<style>
+  :root {
+    --bg: #f4f3ee;
+    --surface: #ffffff;
+    --surface-2: #eceae2;
+    --border: #e0ded4;
+    --border-strong: #cfccbf;
+    --text: #1e2320;
+    --muted: #6c726a;
+    --faint: #949a90;
+    --accent: #0f766e;
+    --accent-ink: #0b5a53;
+    --accent-soft: #d8ebe8;
+    --shadow: 0 1px 2px rgba(30,35,32,.06), 0 8px 24px -12px rgba(30,35,32,.18);
+
+    --med: #d6455f;        /* médico */
+    --med-soft: #fbe1e6;
+    --train: #1f9d57;      /* entrenamiento */
+    --train-soft: #dcf2e4;
+    --other: #5b63d6;      /* otro */
+    --other-soft: #e3e4fa;
+
+    --radius: 14px;
+    --radius-sm: 10px;
+    --maxw: 760px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1312;
+      --surface: #171c1a;
+      --surface-2: #1f2624;
+      --border: #2a312e;
+      --border-strong: #384039;
+      --text: #e7eae6;
+      --muted: #9aa39c;
+      --faint: #727b74;
+      --accent: #2dd4bf;
+      --accent-ink: #7ee7d8;
+      --accent-soft: #123330;
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+
+      --med: #f2708a; --med-soft: #351a20;
+      --train: #55c983; --train-soft: #14301f;
+      --other: #9ba1f5; --other-soft: #1e2040;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg:#f4f3ee; --surface:#fff; --surface-2:#eceae2; --border:#e0ded4; --border-strong:#cfccbf;
+    --text:#1e2320; --muted:#6c726a; --faint:#949a90; --accent:#0f766e; --accent-ink:#0b5a53; --accent-soft:#d8ebe8;
+    --shadow:0 1px 2px rgba(30,35,32,.06),0 8px 24px -12px rgba(30,35,32,.18);
+    --med:#d6455f; --med-soft:#fbe1e6; --train:#1f9d57; --train-soft:#dcf2e4; --other:#5b63d6; --other-soft:#e3e4fa;
+  }
+  :root[data-theme="dark"] {
+    --bg:#0f1312; --surface:#171c1a; --surface-2:#1f2624; --border:#2a312e; --border-strong:#384039;
+    --text:#e7eae6; --muted:#9aa39c; --faint:#727b74; --accent:#2dd4bf; --accent-ink:#7ee7d8; --accent-soft:#123330;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.6);
+    --med:#f2708a; --med-soft:#351a20; --train:#55c983; --train-soft:#14301f; --other:#9ba1f5; --other-soft:#1e2040;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 20px 16px 96px; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ---------- Header ---------- */
+  header.app {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    margin-bottom: 20px;
+  }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .mark {
+    width: 38px; height: 38px; border-radius: 11px; flex: none;
+    background: linear-gradient(150deg, var(--accent), var(--accent-ink));
+    display: grid; place-items: center; color: #fff; box-shadow: var(--shadow);
+  }
+  .mark svg { width: 21px; height: 21px; }
+  .brand h1 { font-size: 1.06rem; margin: 0; font-weight: 650; letter-spacing: -.01em; }
+  .brand p { margin: 0; font-size: .78rem; color: var(--muted); }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--muted); cursor: pointer; display: grid; place-items: center;
+    transition: .15s;
+  }
+  .icon-btn:hover { color: var(--text); border-color: var(--border-strong); }
+  .icon-btn svg { width: 19px; height: 19px; }
+
+  /* ---------- Summary tiles ---------- */
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 22px; }
+  .tile {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 15px 16px; box-shadow: var(--shadow); min-width: 0;
+  }
+  .tile .lbl {
+    font-size: .7rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted);
+    font-weight: 600; display: flex; align-items: center; gap: 6px;
+  }
+  .tile .big { font-size: 1.7rem; font-weight: 700; letter-spacing: -.02em; margin-top: 6px; line-height: 1.1; }
+  .tile .sub { font-size: .78rem; color: var(--muted); margin-top: 3px; }
+  .tile.next .big { font-size: 1.06rem; font-weight: 650; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+
+  /* ---------- Today banner ---------- */
+  .today-banner {
+    background: linear-gradient(150deg, var(--accent), var(--accent-ink));
+    color: #fff; border-radius: var(--radius); padding: 13px 15px; margin-bottom: 20px;
+    box-shadow: var(--shadow); display: flex; gap: 11px; align-items: flex-start;
+  }
+  .today-banner .bell { font-size: 1.15rem; flex: none; line-height: 1.3; }
+  .today-banner .tb-body { min-width: 0; }
+  .today-banner .tb-title { font-weight: 700; font-size: .9rem; letter-spacing: -.01em; }
+  .today-banner .tb-list { font-size: .82rem; opacity: .95; margin-top: 2px; }
+
+  /* ---------- Event calendar actions ---------- */
+  .ev-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
+  .mini {
+    font-family: inherit; font-size: .74rem; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text);
+    border-radius: 999px; padding: 4px 10px; transition: .15s; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .mini:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .mini:active { transform: translateY(1px); }
+
+  /* ---------- Tabs ---------- */
+  .tabs {
+    display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--border);
+    padding: 4px; border-radius: 12px; margin-bottom: 20px;
+  }
+  .tabs button {
+    flex: 1; border: 0; background: transparent; color: var(--muted); cursor: pointer;
+    padding: 9px 6px; border-radius: 9px; font-size: .85rem; font-weight: 600; font-family: inherit;
+    transition: .15s; letter-spacing: -.01em;
+  }
+  .tabs button:hover { color: var(--text); }
+  .tabs button[aria-selected="true"] {
+    background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; animation: fade .25s ease; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .panel.active, #lock, .toast { animation: none; } }
+
+  /* ---------- Cards / forms ---------- */
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 16px; box-shadow: var(--shadow); margin-bottom: 18px;
+  }
+  .card h2 { font-size: .95rem; margin: 0 0 13px; font-weight: 650; letter-spacing: -.01em; }
+  form { display: grid; gap: 11px; }
+  .row { display: grid; gap: 11px; grid-template-columns: 1fr 1fr; }
+  .field { display: grid; gap: 5px; min-width: 0; }
+  .field.full { grid-column: 1 / -1; }
+  label.f { font-size: .74rem; font-weight: 600; color: var(--muted); letter-spacing: .01em; }
+  input, select, textarea {
+    font-family: inherit; font-size: .9rem; color: var(--text); background: var(--surface-2);
+    border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 11px; width: 100%;
+    transition: .15s;
+  }
+  textarea { resize: vertical; min-height: 44px; }
+  input:focus, select:focus, textarea:focus {
+    outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .btn {
+    font-family: inherit; font-size: .9rem; font-weight: 650; cursor: pointer;
+    border: 0; border-radius: var(--radius-sm); padding: 11px 16px;
+    background: var(--accent); color: #fff; transition: .15s; letter-spacing: -.01em;
+  }
+  .btn:hover { filter: brightness(1.06); }
+  .btn:active { transform: translateY(1px); }
+  .btn.ghost { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+  .btn.sm { padding: 8px 13px; font-size: .82rem; }
+
+  /* ---------- Lists ---------- */
+  .list { display: flex; flex-direction: column; gap: 9px; }
+  .item {
+    display: flex; align-items: center; gap: 12px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 11px 13px;
+  }
+  .item .lead { width: 40px; height: 40px; border-radius: 10px; flex: none; display: grid; place-items: center; font-size: 1.1rem; }
+  .item .body { flex: 1; min-width: 0; }
+  .item .title { font-weight: 600; font-size: .92rem; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .item .meta { font-size: .77rem; color: var(--muted); margin-top: 1px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .item .amount { font-weight: 700; font-size: .98rem; white-space: nowrap; }
+  .chip {
+    font-size: .68rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; letter-spacing: .01em;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .chip.med { background: var(--med-soft); color: var(--med); }
+  .chip.train { background: var(--train-soft); color: var(--train); }
+  .chip.other { background: var(--other-soft); color: var(--other); }
+  .chip.cat { background: var(--surface-2); color: var(--muted); }
+  .chip.soon { background: var(--accent-soft); color: var(--accent-ink); }
+  .chip.past { background: var(--surface-2); color: var(--faint); }
+  .del {
+    border: 0; background: transparent; color: var(--faint); cursor: pointer; padding: 6px; border-radius: 8px;
+    flex: none; display: grid; place-items: center; transition: .15s;
+  }
+  .del:hover { color: var(--med); background: var(--med-soft); }
+  .del svg { width: 16px; height: 16px; }
+  .item.done { opacity: .55; }
+
+  .group-label {
+    font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--faint);
+    font-weight: 600; margin: 16px 2px 8px;
+  }
+  .empty {
+    text-align: center; color: var(--muted); font-size: .86rem; padding: 26px 16px;
+    border: 1px dashed var(--border-strong); border-radius: var(--radius);
+  }
+  .empty span { display: block; font-size: 1.6rem; margin-bottom: 6px; opacity: .8; }
+
+  /* ---------- Datos panel ---------- */
+  .data-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .note { font-size: .8rem; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); padding: 11px 13px; line-height: 1.5; }
+  .note b { color: var(--text); }
+
+  /* ---------- Lock screen ---------- */
+  #lock {
+    position: fixed; inset: 0; background: var(--bg); z-index: 50;
+    display: grid; place-items: center; padding: 24px; animation: fade .3s ease;
+  }
+  #lock .box { text-align: center; max-width: 320px; width: 100%; }
+  #lock .mark { width: 56px; height: 56px; border-radius: 16px; margin: 0 auto 18px; }
+  #lock .mark svg { width: 30px; height: 30px; }
+  #lock h2 { margin: 0 0 4px; font-size: 1.3rem; letter-spacing: -.02em; }
+  #lock p { margin: 0 0 20px; color: var(--muted); font-size: .9rem; }
+  #lock form { gap: 12px; }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px;
+    font-size: .85rem; font-weight: 600; box-shadow: var(--shadow); z-index: 60;
+    animation: pop .3s ease; pointer-events: none;
+  }
+  @keyframes pop { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+  @media (max-width: 480px) {
+    .tiles { grid-template-columns: 1fr; }
+    .brand h1 { font-size: 1rem; }
+  }
+</style>
+
+<!-- ================= LOCK / WELCOME ================= -->
+<div id="lock" hidden>
+  <div class="box">
+    <div class="mark">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+    </div>
+    <h2 id="lockTitle">Hola 👋</h2>
+    <p id="lockSub">¿Cómo te llamás? Así personalizo tu panel.</p>
+    <form id="lockForm">
+      <input id="lockInput" type="text" placeholder="Tu nombre" autocomplete="off" />
+      <button class="btn" type="submit">Entrar</button>
+    </form>
+  </div>
+</div>
+
+<!-- ================= APP ================= -->
+<div class="wrap" id="app" hidden>
+  <header class="app">
+    <div class="brand">
+      <div class="mark">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+      </div>
+      <div>
+        <h1 id="greet">Mi Panel</h1>
+        <p id="today"></p>
+      </div>
+    </div>
+    <button class="icon-btn" id="themeBtn" title="Cambiar tema" aria-label="Cambiar tema">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    </button>
+  </header>
+
+  <!-- Summary -->
+  <div class="tiles">
+    <div class="tile">
+      <div class="lbl"><span class="dot" style="background:var(--accent)"></span>Gastado este mes</div>
+      <div class="big num" id="sumMonth">$0</div>
+      <div class="sub" id="sumCount">Sin gastos aún</div>
+    </div>
+    <div class="tile next">
+      <div class="lbl"><span class="dot" style="background:var(--med)"></span>Próximo evento</div>
+      <div class="big" id="nextTitle">Nada agendado</div>
+      <div class="sub" id="nextWhen">Agregá tu primer evento</div>
+    </div>
+  </div>
+
+  <!-- Aviso de hoy -->
+  <div class="today-banner" id="todayBanner" hidden>
+    <span class="bell">🔔</span>
+    <div class="tb-body">
+      <div class="tb-title" id="tbTitle"></div>
+      <div class="tb-list" id="tbList"></div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" role="tablist">
+    <button role="tab" aria-selected="true" data-tab="gastos">Gastos</button>
+    <button role="tab" aria-selected="false" data-tab="eventos">Eventos</button>
+    <button role="tab" aria-selected="false" data-tab="datos">Datos</button>
+  </div>
+
+  <!-- ===== GASTOS ===== -->
+  <section class="panel active" id="p-gastos">
+    <div class="card">
+      <h2>Agregar gasto</h2>
+      <form id="expForm">
+        <div class="row">
+          <div class="field">
+            <label class="f" for="expAmount">Monto</label>
+            <input id="expAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0" required />
+          </div>
+          <div class="field">
+            <label class="f" for="expCat">Categoría</label>
+            <select id="expCat">
+              <option>Comida</option><option>Transporte</option><option>Salud</option>
+              <option>Hogar</option><option>Ocio</option><option>Servicios</option><option>Otros</option>
+            </select>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label class="f" for="expDate">Fecha</label>
+            <input id="expDate" type="date" required />
+          </div>
+          <div class="field">
+            <label class="f" for="expNote">Detalle (opcional)</label>
+            <input id="expNote" type="text" placeholder="Ej: super, farmacia..." />
+          </div>
+        </div>
+        <button class="btn" type="submit">Guardar gasto</button>
+      </form>
+    </div>
+    <div id="expList"></div>
+  </section>
+
+  <!-- ===== EVENTOS ===== -->
+  <section class="panel" id="p-eventos">
+    <div class="card">
+      <h2>Agregar evento</h2>
+      <form id="evForm">
+        <div class="field full">
+          <label class="f" for="evTitle">¿Qué es?</label>
+          <input id="evTitle" type="text" placeholder="Ej: Turno dentista, Entreno pierna..." required />
+        </div>
+        <div class="row">
+          <div class="field">
+            <label class="f" for="evType">Tipo</label>
+            <select id="evType">
+              <option value="med">Médico</option>
+              <option value="train">Entrenamiento</option>
+              <option value="other">Otro</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="f" for="evDate">Fecha</label>
+            <input id="evDate" type="date" required />
+          </div>
+        </div>
+        <div class="row">
+          <div class="field">
+            <label class="f" for="evTime">Hora (opcional)</label>
+            <input id="evTime" type="time" />
+          </div>
+          <div class="field">
+            <label class="f" for="evNote">Nota (opcional)</label>
+            <input id="evNote" type="text" placeholder="Dirección, indicaciones..." />
+          </div>
+        </div>
+        <button class="btn" type="submit">Guardar evento</button>
+      </form>
+    </div>
+    <div id="evList"></div>
+  </section>
+
+  <!-- ===== DATOS ===== -->
+  <section class="panel" id="p-datos">
+    <div class="card">
+      <h2>Tus datos</h2>
+      <p class="note" style="margin-bottom:14px">
+        Todo se guarda <b>en este navegador</b>, en esta PC. Para verlo en <b>otra computadora</b>,
+        exportá el archivo acá, pasalo (USB, mail, Drive) y luego importalo del otro lado.
+      </p>
+      <div class="data-actions">
+        <button class="btn sm" id="exportBtn">⬇ Exportar datos</button>
+        <button class="btn sm ghost" id="importBtn">⬆ Importar datos</button>
+        <input type="file" id="importFile" accept="application/json" hidden />
+        <button class="btn sm ghost" id="renameBtn">✎ Cambiar nombre</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>📲 Usar en el celular</h2>
+      <p class="note" style="margin-bottom:10px">
+        <b>Notificaciones:</b> en cada evento próximo tocá <b>“Agregar al calendario”</b>.
+        Tu Google Calendar (o el Calendario del iPhone) te va a avisar el día del evento,
+        aunque tengas esta app cerrada.
+      </p>
+      <p class="note">
+        <b>Que quede como app:</b> abrí este enlace en el celu y tocá el menú del navegador →
+        <b>“Agregar a pantalla de inicio”</b>. Te queda un ícono como cualquier app.
+      </p>
+    </div>
+    <div class="card">
+      <h2>Zona de riesgo</h2>
+      <p class="note" style="margin-bottom:14px">Borra <b>todos</b> tus gastos y eventos de esta PC. No se puede deshacer.</p>
+      <button class="btn sm ghost" id="wipeBtn" style="color:var(--med)">Borrar todo</button>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  var KEY = "miPanel_v1";
+  var data = load();
+
+  function load() {
+    try {
+      var d = JSON.parse(localStorage.getItem(KEY));
+      if (d && typeof d === "object") {
+        d.expenses = d.expenses || [];
+        d.events = d.events || [];
+        return d;
+      }
+    } catch (e) {}
+    return { name: "", expenses: [], events: [] };
+  }
+  function save() { localStorage.setItem(KEY, JSON.stringify(data)); }
+  function uid() { return Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); }
+
+  // ---------- formatting ----------
+  var money = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  function fmt(n) { return "$" + money.format(n || 0); }
+  var MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  var DAYS = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+
+  function parseDate(s) { var p = (s||"").split("-"); return new Date(+p[0], +p[1]-1, +p[2]); }
+  function todayStart() { var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function fmtDate(s) { var d = parseDate(s); return d.getDate() + " " + MONTHS[d.getMonth()] + " " + d.getFullYear(); }
+  function daysUntil(s) { return Math.round((parseDate(s) - todayStart()) / 86400000); }
+  function relLabel(n) {
+    if (n === 0) return "Hoy";
+    if (n === 1) return "Mañana";
+    if (n === -1) return "Ayer";
+    if (n > 1) return "En " + n + " días";
+    return "Hace " + (-n) + " días";
+  }
+
+  var TYPE = {
+    med:   { name: "Médico", cls: "med", icon: "🩺" },
+    train: { name: "Entrenamiento", cls: "train", icon: "🏋️" },
+    other: { name: "Otro", cls: "other", icon: "📌" }
+  };
+  var CAT_ICON = { Comida:"🍽️", Transporte:"🚌", Salud:"💊", Hogar:"🏠", Ocio:"🎬", Servicios:"💡", Otros:"🧾" };
+
+  // ---------- refs ----------
+  var $ = function (id) { return document.getElementById(id); };
+  var lock = $("lock"), app = $("app");
+
+  // ---------- boot ----------
+  initTheme();
+  $("today").textContent = DAYS[new Date().getDay()] + ", " + new Date().getDate() + " de " +
+    ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"][new Date().getMonth()];
+  setDefaultDates();
+
+  if (data.name) { enter(); } else { lock.hidden = false; }
+
+  $("lockForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var v = $("lockInput").value.trim();
+    if (!v) { $("lockInput").focus(); return; }
+    data.name = v; save(); enter();
+  });
+
+  function enter() {
+    lock.hidden = true; app.hidden = false;
+    $("greet").textContent = "Hola, " + data.name;
+    renderAll();
+  }
+
+  function setDefaultDates() {
+    var t = new Date();
+    var iso = t.getFullYear() + "-" + String(t.getMonth()+1).padStart(2,"0") + "-" + String(t.getDate()).padStart(2,"0");
+    $("expDate").value = iso; $("evDate").value = iso;
+  }
+
+  // ---------- tabs ----------
+  document.querySelectorAll(".tabs button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.querySelectorAll(".tabs button").forEach(function (x) { x.setAttribute("aria-selected", "false"); });
+      b.setAttribute("aria-selected", "true");
+      document.querySelectorAll(".panel").forEach(function (p) { p.classList.remove("active"); });
+      $("p-" + b.dataset.tab).classList.add("active");
+    });
+  });
+
+  // ---------- theme ----------
+  function initTheme() {
+    var saved = localStorage.getItem("miPanel_theme");
+    if (saved) document.documentElement.setAttribute("data-theme", saved);
+    $("themeBtn").addEventListener("click", function () {
+      var cur = document.documentElement.getAttribute("data-theme");
+      if (!cur) cur = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      var next = cur === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      localStorage.setItem("miPanel_theme", next);
+    });
+  }
+
+  // ---------- expenses ----------
+  $("expForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var amt = parseFloat($("expAmount").value);
+    if (isNaN(amt) || amt < 0) return;
+    data.expenses.push({ id: uid(), amount: amt, cat: $("expCat").value, date: $("expDate").value, note: $("expNote").value.trim() });
+    save();
+    $("expAmount").value = ""; $("expNote").value = "";
+    renderAll(); toast("Gasto guardado");
+  });
+
+  function renderExpenses() {
+    var box = $("expList");
+    var list = data.expenses.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    if (!list.length) { box.innerHTML = emptyBox("💸", "Todavía no cargaste gastos"); return; }
+    var html = "";
+    list.forEach(function (x) {
+      html += '<div class="item">' +
+        '<div class="lead" style="background:var(--surface-2)">' + (CAT_ICON[x.cat]||"🧾") + '</div>' +
+        '<div class="body"><div class="title">' + (esc(x.note) || x.cat) + '</div>' +
+        '<div class="meta"><span class="chip cat">' + x.cat + '</span><span>' + fmtDate(x.date) + '</span></div></div>' +
+        '<div class="amount num">' + fmt(x.amount) + '</div>' +
+        delBtn("exp", x.id) + '</div>';
+    });
+    box.innerHTML = html;
+  }
+
+  // ---------- events ----------
+  $("evForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    data.events.push({
+      id: uid(), title: $("evTitle").value.trim(), type: $("evType").value,
+      date: $("evDate").value, time: $("evTime").value, note: $("evNote").value.trim()
+    });
+    save();
+    $("evTitle").value = ""; $("evNote").value = ""; $("evTime").value = "";
+    renderAll(); toast("Evento guardado");
+  });
+
+  function renderEvents() {
+    var box = $("evList");
+    if (!data.events.length) { box.innerHTML = emptyBox("📅", "No tenés eventos agendados"); return; }
+    var sorted = data.events.slice().sort(function (a, b) {
+      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
+      return (a.time || "") < (b.time || "") ? -1 : 1;
+    });
+    var upcoming = [], past = [];
+    sorted.forEach(function (ev) { (daysUntil(ev.date) >= 0 ? upcoming : past).push(ev); });
+    past.reverse();
+    var html = "";
+    if (upcoming.length) { html += '<div class="group-label">Próximos</div><div class="list">'; upcoming.forEach(function (ev){ html += evRow(ev, false); }); html += '</div>'; }
+    if (past.length) { html += '<div class="group-label">Pasados</div><div class="list">'; past.forEach(function (ev){ html += evRow(ev, true); }); html += '</div>'; }
+    box.innerHTML = html;
+  }
+
+  function evRow(ev, isPast) {
+    var t = TYPE[ev.type] || TYPE.other;
+    var d = daysUntil(ev.date);
+    var badge = isPast ? '<span class="chip past">' + relLabel(d) + '</span>'
+      : '<span class="chip ' + (d <= 2 ? 'soon' : 'cat') + '">' + relLabel(d) + '</span>';
+    var when = fmtDate(ev.date) + (ev.time ? " · " + ev.time : "");
+    var actions = isPast ? '' :
+      '<div class="ev-actions">' +
+        '<button class="mini" data-cal="g" data-id="' + ev.id + '">📅 Agregar a Google Calendar</button>' +
+        '<button class="mini" data-cal="i" data-id="' + ev.id + '">🍎 iPhone (.ics)</button>' +
+      '</div>';
+    return '<div class="item' + (isPast ? ' done' : '') + '">' +
+      '<div class="lead" style="background:var(--' + t.cls + '-soft)">' + t.icon + '</div>' +
+      '<div class="body"><div class="title">' + esc(ev.title) + '</div>' +
+      '<div class="meta"><span class="chip ' + t.cls + '">' + t.name + '</span><span>' + when + '</span>' + badge +
+      (ev.note ? '<span>· ' + esc(ev.note) + '</span>' : '') + '</div>' + actions + '</div>' +
+      delBtn("ev", ev.id) + '</div>';
+  }
+
+  // ---------- today banner ----------
+  function renderToday() {
+    var el = $("todayBanner");
+    var todays = data.events.filter(function (ev) { return daysUntil(ev.date) === 0; })
+      .sort(function (a, b) { return (a.time || "99") < (b.time || "99") ? -1 : 1; });
+    if (!todays.length) { el.hidden = true; return; }
+    el.hidden = false;
+    $("tbTitle").textContent = todays.length === 1 ? "Hoy tenés un evento" : "Hoy tenés " + todays.length + " eventos";
+    $("tbList").textContent = todays.map(function (ev) {
+      return (ev.time ? ev.time + " · " : "") + ev.title;
+    }).join("   ·   ");
+  }
+
+  // ---------- calendar export ----------
+  function pad(n) { return String(n).padStart(2, "0"); }
+  function ymd(d) { return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()); }
+
+  function gcalUrl(ev) {
+    var t = TYPE[ev.type] || TYPE.other;
+    var p = ev.date.split("-"), dates;
+    if (ev.time) {
+      var tp = ev.time.split(":");
+      var s = new Date(+p[0], +p[1]-1, +p[2], +tp[0], +tp[1]);
+      var e = new Date(s.getTime() + 60 * 60000);
+      var f = function (d) { return ymd(d) + "T" + pad(d.getHours()) + pad(d.getMinutes()) + "00"; };
+      dates = f(s) + "/" + f(e);
+    } else {
+      var d0 = new Date(+p[0], +p[1]-1, +p[2]);
+      var d1 = new Date(d0.getTime() + 86400000);
+      dates = ymd(d0) + "/" + ymd(d1);
+    }
+    var tz = "";
+    try { tz = "&ctz=" + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone); } catch (e) {}
+    return "https://calendar.google.com/calendar/render?action=TEMPLATE" +
+      "&text=" + encodeURIComponent(ev.title) +
+      "&dates=" + dates +
+      "&details=" + encodeURIComponent(t.name + (ev.note ? " — " + ev.note : "")) + tz;
+  }
+
+  function buildIcs(ev) {
+    var t = TYPE[ev.type] || TYPE.other;
+    var p = ev.date.split("-"), dtstart, dtend, alarm;
+    if (ev.time) {
+      var tp = ev.time.split(":");
+      var s = new Date(+p[0], +p[1]-1, +p[2], +tp[0], +tp[1]);
+      var e = new Date(s.getTime() + 60 * 60000);
+      var f = function (d) { return ymd(d) + "T" + pad(d.getHours()) + pad(d.getMinutes()) + "00"; };
+      dtstart = "DTSTART:" + f(s); dtend = "DTEND:" + f(e);
+      alarm = "TRIGGER:-PT2H"; // aviso 2 h antes
+    } else {
+      var d0 = new Date(+p[0], +p[1]-1, +p[2]);
+      var d1 = new Date(d0.getTime() + 86400000);
+      dtstart = "DTSTART;VALUE=DATE:" + ymd(d0); dtend = "DTEND;VALUE=DATE:" + ymd(d1);
+      alarm = "TRIGGER:PT9H"; // aviso a las 9 del día del evento
+    }
+    var lines = [
+      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MiPanel//ES", "CALSCALE:GREGORIAN",
+      "BEGIN:VEVENT",
+      "UID:" + ev.id + "@mipanel",
+      dtstart, dtend,
+      "SUMMARY:" + icsEsc(ev.title),
+      "DESCRIPTION:" + icsEsc(t.name + (ev.note ? " — " + ev.note : "")),
+      "BEGIN:VALARM", alarm, "ACTION:DISPLAY", "DESCRIPTION:" + icsEsc(ev.title), "END:VALARM",
+      "END:VEVENT", "END:VCALENDAR"
+    ];
+    return lines.join("\r\n");
+  }
+  function icsEsc(s) { return (s || "").replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n"); }
+
+  function findEvent(id) { for (var i = 0; i < data.events.length; i++) if (data.events[i].id === id) return data.events[i]; return null; }
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-cal]"); if (!b) return;
+    var ev = findEvent(b.dataset.id); if (!ev) return;
+    if (b.dataset.cal === "g") {
+      window.open(gcalUrl(ev), "_blank");
+    } else {
+      var blob = new Blob([buildIcs(ev)], { type: "text/calendar" });
+      var url = URL.createObjectURL(blob), a = document.createElement("a");
+      a.href = url; a.download = (ev.title || "evento").replace(/[^\w\s-]/g, "").trim().replace(/\s+/g, "-") + ".ics";
+      a.click(); URL.revokeObjectURL(url);
+      toast("Abrí el archivo para agregarlo al calendario");
+    }
+  });
+
+  // ---------- summary ----------
+  function renderSummary() {
+    var now = new Date(), ym = now.getFullYear() + "-" + String(now.getMonth()+1).padStart(2,"0");
+    var total = 0, count = 0;
+    data.expenses.forEach(function (x) { if ((x.date||"").slice(0,7) === ym) { total += x.amount; count++; } });
+    $("sumMonth").textContent = fmt(total);
+    $("sumCount").textContent = count ? count + (count === 1 ? " gasto este mes" : " gastos este mes") : "Sin gastos este mes";
+
+    var up = data.events.filter(function (ev) { return daysUntil(ev.date) >= 0; })
+      .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    if (up.length) {
+      var ev = up[0], t = TYPE[ev.type] || TYPE.other, d = daysUntil(ev.date);
+      $("nextTitle").textContent = ev.title;
+      $("nextWhen").textContent = t.name + " · " + relLabel(d) + " (" + fmtDate(ev.date) + ")";
+    } else {
+      $("nextTitle").textContent = "Nada agendado";
+      $("nextWhen").textContent = "Agregá tu primer evento";
+    }
+  }
+
+  function renderAll() { renderSummary(); renderToday(); renderExpenses(); renderEvents(); }
+
+  // ---------- delete ----------
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest(".del"); if (!btn) return;
+    var kind = btn.dataset.kind, id = btn.dataset.id;
+    if (kind === "exp") data.expenses = data.expenses.filter(function (x) { return x.id !== id; });
+    else data.events = data.events.filter(function (x) { return x.id !== id; });
+    save(); renderAll(); toast("Eliminado");
+  });
+
+  // ---------- datos ----------
+  $("exportBtn").addEventListener("click", function () {
+    var blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    var url = URL.createObjectURL(blob), a = document.createElement("a");
+    var now = new Date();
+    a.href = url;
+    a.download = "mi-panel-" + now.getFullYear() + String(now.getMonth()+1).padStart(2,"0") + String(now.getDate()).padStart(2,"0") + ".json";
+    a.click(); URL.revokeObjectURL(url);
+    toast("Datos exportados");
+  });
+  $("importBtn").addEventListener("click", function () { $("importFile").click(); });
+  $("importFile").addEventListener("change", function (e) {
+    var file = e.target.files[0]; if (!file) return;
+    var r = new FileReader();
+    r.onload = function () {
+      try {
+        var d = JSON.parse(r.result);
+        if (!d || !Array.isArray(d.expenses) || !Array.isArray(d.events)) throw 0;
+        if (!confirm("Esto reemplazará los datos de esta PC por los del archivo. ¿Continuar?")) return;
+        data = { name: d.name || data.name, expenses: d.expenses, events: d.events };
+        save(); $("greet").textContent = "Hola, " + data.name; renderAll(); toast("Datos importados");
+      } catch (err) { alert("El archivo no es válido. Usá uno exportado desde esta app."); }
+    };
+    r.readAsText(file); e.target.value = "";
+  });
+  $("renameBtn").addEventListener("click", function () {
+    var v = prompt("¿Cómo querés que te llame?", data.name);
+    if (v && v.trim()) { data.name = v.trim(); save(); $("greet").textContent = "Hola, " + data.name; toast("Listo"); }
+  });
+  $("wipeBtn").addEventListener("click", function () {
+    if (!confirm("¿Seguro que querés borrar TODOS los gastos y eventos? No se puede deshacer.")) return;
+    data.expenses = []; data.events = []; save(); renderAll(); toast("Todo borrado");
+  });
+
+  // ---------- helpers ----------
+  function delBtn(kind, id) {
+    return '<button class="del" data-kind="' + kind + '" data-id="' + id + '" title="Eliminar" aria-label="Eliminar">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>';
+  }
+  function emptyBox(icon, txt) { return '<div class="empty"><span>' + icon + '</span>' + txt + '</div>'; }
+  function esc(s) { return (s || "").replace(/[&<>"']/g, function (c) { return { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]; }); }
+
+  var toastT;
+  function toast(msg) {
+    var old = document.querySelector(".toast"); if (old) old.remove();
+    var el = document.createElement("div"); el.className = "toast"; el.textContent = msg;
+    document.body.appendChild(el);
+    clearTimeout(toastT); toastT = setTimeout(function () { el.remove(); }, 1900);
+  }
+})();
+</script>
