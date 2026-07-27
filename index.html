@@ -1054,13 +1054,14 @@
     $("sumMonth").className = "big num " + (bal < 0 ? "neg" : "");
     $("sumCount").textContent = count ? ("Gastaste " + fmt(t.out) + (t.inc ? " · entró " + fmt(t.inc) : "")) : "Sin movimientos este mes";
 
+    var now = new Date();
     var up = data.events.map(function (ev) { return { ev: ev, occ: eventNextOcc(ev, now) }; })
       .filter(function (u) { return u.occ; })
       .sort(function (a, b) { return a.occ - b.occ; });
     if (up.length) {
-      var ev = up[0].ev, t = TYPE[ev.type] || TYPE.other;
+      var ev = up[0].ev, tp = TYPE[ev.type] || TYPE.other;
       $("nextTitle").textContent = ev.title;
-      $("nextWhen").textContent = t.name + " · " + occLabel(up[0].occ);
+      $("nextWhen").textContent = tp.name + " · " + occLabel(up[0].occ);
     } else {
       $("nextTitle").textContent = "Nada agendado";
       $("nextWhen").textContent = "Agregá tu primer evento";
