@@ -138,6 +138,31 @@
   .mini:hover { border-color: var(--accent); color: var(--accent-ink); }
   .mini:active { transform: translateY(1px); }
 
+  /* ---------- Segmented (una vez / cada semana) ---------- */
+  .seg { display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--border); padding: 3px; border-radius: 10px; }
+  .seg-btn {
+    flex: 1; border: 0; background: transparent; color: var(--muted); cursor: pointer;
+    padding: 8px 6px; border-radius: 8px; font-size: .82rem; font-weight: 600; font-family: inherit; transition: .15s;
+  }
+  .seg-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+
+  /* ---------- Slot rows (días y horarios) ---------- */
+  #slotRows { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+  .slot-row { display: flex; gap: 8px; align-items: center; }
+  .slot-row select, .slot-row input { flex: 1; min-width: 0; }
+  .slot-del {
+    flex: none; width: 34px; height: 40px; border: 1px solid var(--border); background: var(--surface-2);
+    color: var(--faint); border-radius: 9px; cursor: pointer; font-size: .9rem; transition: .15s;
+  }
+  .slot-del:hover { color: var(--med); border-color: var(--med); }
+
+  /* ---------- Sync status ---------- */
+  .sync-badge {
+    display: inline-flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 600;
+    padding: 3px 10px; border-radius: 999px; background: var(--surface-2); color: var(--muted);
+  }
+  .sync-badge.on { background: var(--train-soft); color: var(--train); }
+
   /* ---------- Tabs ---------- */
   .tabs {
     display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--border);
@@ -350,7 +375,7 @@
       <form id="evForm">
         <div class="field full">
           <label class="f" for="evTitle">¿Qué es?</label>
-          <input id="evTitle" type="text" placeholder="Ej: Turno dentista, Entreno pierna..." required />
+          <input id="evTitle" type="text" placeholder="Ej: Natación, Turno dentista..." required />
         </div>
         <div class="row">
           <div class="field">
@@ -362,19 +387,21 @@
             </select>
           </div>
           <div class="field">
-            <label class="f" for="evDate">Fecha</label>
-            <input id="evDate" type="date" required />
+            <label class="f">¿Cuándo?</label>
+            <div class="seg" id="evRepeat">
+              <button type="button" class="seg-btn active" data-rep="once">Una vez</button>
+              <button type="button" class="seg-btn" data-rep="weekly">Cada semana</button>
+            </div>
           </div>
         </div>
-        <div class="row">
-          <div class="field">
-            <label class="f" for="evTime">Hora (opcional)</label>
-            <input id="evTime" type="time" />
-          </div>
-          <div class="field">
-            <label class="f" for="evNote">Nota (opcional)</label>
-            <input id="evNote" type="text" placeholder="Dirección, indicaciones..." />
-          </div>
+        <div class="field full">
+          <label class="f">Días y horarios</label>
+          <div id="slotRows"></div>
+          <button type="button" class="mini" id="addSlot">＋ Agregar otro día</button>
+        </div>
+        <div class="field full">
+          <label class="f" for="evNote">Nota (opcional)</label>
+          <input id="evNote" type="text" placeholder="Dirección, indicaciones..." />
         </div>
         <button class="btn" type="submit">Guardar evento</button>
       </form>
@@ -385,10 +412,27 @@
   <!-- ===== DATOS ===== -->
   <section class="panel" id="p-datos">
     <div class="card">
+      <h2>🔄 Sincronizar entre dispositivos</h2>
+      <p class="note" style="margin-bottom:12px">
+        Poné un <b>código secreto</b> inventado por vos (el mismo en la PC y en el celu).
+        Tus datos se guardan en la nube de Google y se sincronizan solos entre todos tus aparatos.
+      </p>
+      <div class="field">
+        <label class="f" for="syncCode">Tu código secreto</label>
+        <input id="syncCode" type="text" placeholder="Ej: santi-natacion-2026" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="data-actions" style="margin-top:11px; align-items:center">
+        <button class="btn sm" id="syncConnect">Conectar</button>
+        <button class="btn sm ghost" id="syncDisconnect" hidden>Desconectar</button>
+        <span class="sync-badge" id="syncBadge">Sin conectar</span>
+      </div>
+      <p class="note" id="syncStatus" style="margin-top:11px">Con esto, entrás desde cualquier aparato con el mismo código y ves siempre lo último.</p>
+    </div>
+    <div class="card">
       <h2>Tus datos</h2>
       <p class="note" style="margin-bottom:14px">
-        Todo se guarda <b>en este navegador</b>, en esta PC. Para verlo en <b>otra computadora</b>,
-        exportá el archivo acá, pasalo (USB, mail, Drive) y luego importalo del otro lado.
+        Además de la nube, se guardan <b>en este navegador</b>. Podés exportar una copia de respaldo
+        o importar datos de otro lado.
       </p>
       <div class="data-actions">
         <button class="btn sm" id="exportBtn">⬇ Exportar datos</button>
@@ -417,28 +461,57 @@
   </section>
 </div>
 
+<!-- Firebase (solo carga en el sitio web; en la vista previa de Claude no, y no pasa nada) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+
 <script>
 (function () {
   var KEY = "miPanel_v1";
+
+  var firebaseConfig = {
+    apiKey: "AIzaSyDSiN9U4EZ16iK8ri5G0Vzvk_hgO1De4jI",
+    authDomain: "mi-panel-f2a2b.firebaseapp.com",
+    projectId: "mi-panel-f2a2b",
+    storageBucket: "mi-panel-f2a2b.firebasestorage.app",
+    messagingSenderId: "655187279800",
+    appId: "1:655187279800:web:1272fae7da8279d69dd94d"
+  };
+
   var data = load();
 
   function load() {
     try {
       var d = JSON.parse(localStorage.getItem(KEY));
-      if (d && typeof d === "object") {
-        d.expenses = d.expenses || [];
-        d.events = d.events || [];
-        return d;
-      }
+      if (d && typeof d === "object") return normalize(d);
     } catch (e) {}
     return { name: "", expenses: [], events: [] };
   }
+
+  // Normaliza datos y migra eventos viejos (fecha/hora) al nuevo formato con "slots".
+  function normalize(d) {
+    d = d || {};
+    var out = { name: d.name || "", expenses: [], events: [] };
+    if (Array.isArray(d.expenses)) out.expenses = d.expenses;
+    if (Array.isArray(d.events)) out.events = d.events.map(migrateEvent);
+    return out;
+  }
+  function migrateEvent(ev) {
+    if (ev && ev.slots && ev.slots.length) return ev;
+    return {
+      id: (ev && ev.id) || uid(), title: (ev && ev.title) || "",
+      type: (ev && ev.type) || "other", note: (ev && ev.note) || "",
+      repeat: "once", slots: [{ date: ev && ev.date, time: (ev && ev.time) || "" }]
+    };
+  }
+
   var storageOK = true;
   function save() {
     try { localStorage.setItem(KEY, JSON.stringify(data)); }
     catch (e) {
       if (storageOK) { storageOK = false; toast("No se pudieron guardar los datos en este navegador"); }
     }
+    if (docRef && !applyingRemote) pushCloud();
   }
   function uid() { return Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36); }
 
@@ -458,6 +531,69 @@
     if (n === -1) return "Ayer";
     if (n > 1) return "En " + n + " días";
     return "Hace " + (-n) + " días";
+  }
+
+  // ---------- días de la semana / ocurrencias ----------
+  var DOW_LONG = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
+  var DOW_SHORT = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+  var DOW_ICS = ["SU","MO","TU","WE","TH","FR","SA"];
+
+  function isWeekly(slot) { return slot && slot.dow != null && !slot.date; }
+
+  // Devuelve la fecha (Date) de la próxima vez que ocurre un slot, desde "from".
+  function slotOcc(slot, from) {
+    var t = (slot.time || "00:00").split(":");
+    var hh = +t[0] || 0, mm = +t[1] || 0;
+    if (isWeekly(slot)) {
+      for (var i = 0; i < 8; i++) {
+        var d = new Date(from.getFullYear(), from.getMonth(), from.getDate() + i, hh, mm, 0, 0);
+        if (d.getDay() === +slot.dow && d >= from) return d;
+      }
+      return null;
+    }
+    var p = (slot.date || "").split("-");
+    if (p.length < 3) return null;
+    return new Date(+p[0], +p[1]-1, +p[2], hh, mm, 0, 0);
+  }
+
+  // Próxima ocurrencia futura del evento (o null si ya pasó y no se repite).
+  function eventNextOcc(ev, now) {
+    var best = null;
+    (ev.slots || []).forEach(function (s) {
+      var o = slotOcc(s, now);
+      if (o && o >= now && (!best || o < best)) best = o;
+    });
+    return best;
+  }
+
+  // Ocurrencias de HOY (para el aviso de arriba).
+  function eventTodayOccs(ev) {
+    var now = new Date();
+    var start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var end = new Date(start.getTime() + 86400000);
+    var res = [];
+    (ev.slots || []).forEach(function (s) {
+      var o = slotOcc(s, start);
+      if (o && o >= start && o < end) res.push(o);
+    });
+    return res.sort(function (a, b) { return a - b; });
+  }
+
+  function slotLabel(s) {
+    if (isWeekly(s)) return DOW_SHORT[+s.dow] + (s.time ? " " + s.time : "");
+    var p = (s.date || "").split("-");
+    if (p.length < 3) return "";
+    return (+p[2]) + " " + MONTHS[+p[1]-1] + (s.time ? " " + s.time : "");
+  }
+  function scheduleSummary(ev) {
+    return (ev.slots || []).map(slotLabel).filter(Boolean).join(" · ");
+  }
+  function isWeeklyEvent(ev) { return (ev.slots || []).some(isWeekly); }
+  function occLabel(d) {
+    if (!d) return "";
+    var n = Math.round((new Date(d.getFullYear(), d.getMonth(), d.getDate()) - todayStart()) / 86400000);
+    var hora = (d.getHours() || d.getMinutes()) ? " " + pad(d.getHours()) + ":" + pad(d.getMinutes()) : "";
+    return relLabel(n) + hora;
   }
 
   var TYPE = {
@@ -485,11 +621,11 @@
 
   renderAll();
 
-  function setDefaultDates() {
+  function todayISO() {
     var t = new Date();
-    var iso = t.getFullYear() + "-" + String(t.getMonth()+1).padStart(2,"0") + "-" + String(t.getDate()).padStart(2,"0");
-    $("expDate").value = iso; $("evDate").value = iso;
+    return t.getFullYear() + "-" + String(t.getMonth()+1).padStart(2,"0") + "-" + String(t.getDate()).padStart(2,"0");
   }
+  function setDefaultDates() { $("expDate").value = todayISO(); }
 
   // ---------- tabs ----------
   document.querySelectorAll(".tabs button").forEach(function (b) {
@@ -542,49 +678,121 @@
     box.innerHTML = html;
   }
 
-  // ---------- events ----------
+  // ---------- events: formulario con varios días/horarios ----------
+  var repMode = "once";
+  var slotRows = $("slotRows");
+
+  function makeSlotRow(preset) {
+    var row = document.createElement("div");
+    row.className = "slot-row";
+    if (repMode === "weekly") {
+      var order = [1,2,3,4,5,6,0]; // Lun a Dom
+      var opts = order.map(function (i) { return '<option value="' + i + '">' + DOW_LONG[i] + '</option>'; }).join("");
+      row.innerHTML = '<select class="slot-dow">' + opts + '</select>' +
+        '<input type="time" class="slot-time" />' +
+        '<button type="button" class="slot-del" title="Quitar">✕</button>';
+      var sel = row.querySelector(".slot-dow");
+      sel.value = preset && preset.dow != null ? preset.dow : new Date().getDay();
+      if (preset && preset.time) row.querySelector(".slot-time").value = preset.time;
+    } else {
+      row.innerHTML = '<input type="date" class="slot-date" />' +
+        '<input type="time" class="slot-time" />' +
+        '<button type="button" class="slot-del" title="Quitar">✕</button>';
+      row.querySelector(".slot-date").value = (preset && preset.date) || todayISO();
+      if (preset && preset.time) row.querySelector(".slot-time").value = preset.time;
+    }
+    row.querySelector(".slot-del").addEventListener("click", function () {
+      if (slotRows.children.length > 1) row.remove();
+    });
+    return row;
+  }
+  function resetSlots() { slotRows.innerHTML = ""; slotRows.appendChild(makeSlotRow()); }
+  resetSlots();
+
+  $("evRepeat").addEventListener("click", function (e) {
+    var b = e.target.closest(".seg-btn"); if (!b) return;
+    repMode = b.dataset.rep;
+    document.querySelectorAll("#evRepeat .seg-btn").forEach(function (x) { x.classList.toggle("active", x === b); });
+    $("addSlot").textContent = repMode === "weekly" ? "＋ Agregar otro día" : "＋ Agregar otra fecha";
+    resetSlots();
+  });
+  $("addSlot").addEventListener("click", function () { slotRows.appendChild(makeSlotRow()); });
+
+  function collectSlots() {
+    var out = [];
+    slotRows.querySelectorAll(".slot-row").forEach(function (r) {
+      var time = (r.querySelector(".slot-time").value || "").trim();
+      if (repMode === "weekly") {
+        out.push({ dow: +r.querySelector(".slot-dow").value, time: time });
+      } else {
+        var date = r.querySelector(".slot-date").value;
+        if (date) out.push({ date: date, time: time });
+      }
+    });
+    return out;
+  }
+
   $("evForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    data.events.push({
-      id: uid(), title: $("evTitle").value.trim(), type: $("evType").value,
-      date: $("evDate").value, time: $("evTime").value, note: $("evNote").value.trim()
-    });
+    var title = $("evTitle").value.trim();
+    var slots = collectSlots();
+    if (!title) { $("evTitle").focus(); return; }
+    if (!slots.length) { toast("Agregá al menos un día"); return; }
+    var ev = { id: uid(), title: title, type: $("evType").value, note: $("evNote").value.trim(), repeat: repMode, slots: slots };
+    data.events.push(ev);
     save();
-    $("evTitle").value = ""; $("evNote").value = ""; $("evTime").value = "";
-    renderAll(); toast("Evento guardado");
+    $("evTitle").value = ""; $("evNote").value = "";
+    resetSlots();
+    renderAll();
+    notifyEvent(ev);
   });
 
   function renderEvents() {
     var box = $("evList");
     if (!data.events.length) { box.innerHTML = emptyBox("📅", "No tenés eventos agendados"); return; }
-    var sorted = data.events.slice().sort(function (a, b) {
-      if (a.date !== b.date) return a.date < b.date ? -1 : 1;
-      return (a.time || "") < (b.time || "") ? -1 : 1;
-    });
+    var now = new Date();
     var upcoming = [], past = [];
-    sorted.forEach(function (ev) { (daysUntil(ev.date) >= 0 ? upcoming : past).push(ev); });
-    past.reverse();
+    data.events.forEach(function (ev) {
+      var occ = eventNextOcc(ev, now);
+      if (occ) upcoming.push({ ev: ev, occ: occ }); else past.push({ ev: ev });
+    });
+    upcoming.sort(function (a, b) { return a.occ - b.occ; });
     var html = "";
-    if (upcoming.length) { html += '<div class="group-label">Próximos</div><div class="list">'; upcoming.forEach(function (ev){ html += evRow(ev, false); }); html += '</div>'; }
-    if (past.length) { html += '<div class="group-label">Pasados</div><div class="list">'; past.forEach(function (ev){ html += evRow(ev, true); }); html += '</div>'; }
+    if (upcoming.length) {
+      html += '<div class="group-label">Próximos</div><div class="list">';
+      upcoming.forEach(function (u) { html += evRow(u.ev, u.occ, false); });
+      html += '</div>';
+    }
+    if (past.length) {
+      html += '<div class="group-label">Pasados</div><div class="list">';
+      past.forEach(function (u) { html += evRow(u.ev, null, true); });
+      html += '</div>';
+    }
     box.innerHTML = html;
   }
 
-  function evRow(ev, isPast) {
+  function evRow(ev, occ, isPast) {
     var t = TYPE[ev.type] || TYPE.other;
-    var d = daysUntil(ev.date);
-    var badge = isPast ? '<span class="chip past">' + relLabel(d) + '</span>'
-      : '<span class="chip ' + (d <= 2 ? 'soon' : 'cat') + '">' + relLabel(d) + '</span>';
-    var when = fmtDate(ev.date) + (ev.time ? " · " + ev.time : "");
+    var weekly = isWeeklyEvent(ev);
+    var summary = scheduleSummary(ev);
+    var badge = "";
+    if (!isPast && occ) {
+      var n = Math.round((new Date(occ.getFullYear(), occ.getMonth(), occ.getDate()) - todayStart()) / 86400000);
+      badge = '<span class="chip ' + (n <= 2 ? 'soon' : 'cat') + '">Próx: ' + occLabel(occ) + '</span>';
+    } else if (isPast) {
+      badge = '<span class="chip past">Pasado</span>';
+    }
+    var weeklyChip = weekly ? '<span class="chip cat">🔁 Cada semana</span>' : '';
     var actions = isPast ? '' :
       '<div class="ev-actions">' +
-        '<button class="mini" data-cal="g" data-id="' + ev.id + '">📅 Agregar a Google Calendar</button>' +
-        '<button class="mini" data-cal="i" data-id="' + ev.id + '">🍎 iPhone (.ics)</button>' +
+        '<button class="mini" data-cal="i" data-id="' + ev.id + '">📅 Agendar con avisos</button>' +
+        '<button class="mini" data-cal="g" data-id="' + ev.id + '">Abrir en Google</button>' +
       '</div>';
     return '<div class="item' + (isPast ? ' done' : '') + '">' +
       '<div class="lead" style="background:var(--' + t.cls + '-soft)">' + t.icon + '</div>' +
       '<div class="body"><div class="title">' + esc(ev.title) + '</div>' +
-      '<div class="meta"><span class="chip ' + t.cls + '">' + t.name + '</span><span>' + when + '</span>' + badge +
+      '<div class="meta"><span class="chip ' + t.cls + '">' + t.name + '</span>' + weeklyChip +
+      '<span>' + esc(summary) + '</span>' + badge +
       (ev.note ? '<span>· ' + esc(ev.note) + '</span>' : '') + '</div>' + actions + '</div>' +
       delBtn("ev", ev.id) + '</div>';
   }
@@ -592,68 +800,90 @@
   // ---------- today banner ----------
   function renderToday() {
     var el = $("todayBanner");
-    var todays = data.events.filter(function (ev) { return daysUntil(ev.date) === 0; })
-      .sort(function (a, b) { return (a.time || "99") < (b.time || "99") ? -1 : 1; });
+    var todays = [];
+    data.events.forEach(function (ev) {
+      eventTodayOccs(ev).forEach(function (o) { todays.push({ ev: ev, occ: o }); });
+    });
+    todays.sort(function (a, b) { return a.occ - b.occ; });
     if (!todays.length) { el.hidden = true; return; }
     el.hidden = false;
     $("tbTitle").textContent = todays.length === 1 ? "Hoy tenés un evento" : "Hoy tenés " + todays.length + " eventos";
-    $("tbList").textContent = todays.map(function (ev) {
-      return (ev.time ? ev.time + " · " : "") + ev.title;
+    $("tbList").textContent = todays.map(function (u) {
+      var hh = u.occ.getHours() || u.occ.getMinutes() ? pad(u.occ.getHours()) + ":" + pad(u.occ.getMinutes()) + " · " : "";
+      return hh + u.ev.title;
     }).join("   ·   ");
+  }
+
+  // ---------- notificación al instante ----------
+  function notifyEvent(ev) {
+    var summary = scheduleSummary(ev);
+    toast("✅ Evento guardado");
+    if (!("Notification" in window)) return;
+    function show() {
+      try { new Notification("✅ " + ev.title, { body: (isWeeklyEvent(ev) ? "Cada semana · " : "") + summary }); } catch (e) {}
+    }
+    if (Notification.permission === "granted") show();
+    else if (Notification.permission !== "denied") {
+      Notification.requestPermission().then(function (p) { if (p === "granted") show(); });
+    }
   }
 
   // ---------- calendar export ----------
   function pad(n) { return String(n).padStart(2, "0"); }
   function ymd(d) { return d.getFullYear() + pad(d.getMonth() + 1) + pad(d.getDate()); }
+  function stampLocal(d) { return ymd(d) + "T" + pad(d.getHours()) + pad(d.getMinutes()) + "00"; }
 
+  // Google Calendar: abre la próxima ocurrencia (si es semanal, la deja repetida ese día).
   function gcalUrl(ev) {
     var t = TYPE[ev.type] || TYPE.other;
-    var p = ev.date.split("-"), dates;
-    if (ev.time) {
-      var tp = ev.time.split(":");
-      var s = new Date(+p[0], +p[1]-1, +p[2], +tp[0], +tp[1]);
-      var e = new Date(s.getTime() + 60 * 60000);
-      var f = function (d) { return ymd(d) + "T" + pad(d.getHours()) + pad(d.getMinutes()) + "00"; };
-      dates = f(s) + "/" + f(e);
+    var now = new Date();
+    var occ = eventNextOcc(ev, now) || slotOcc((ev.slots || [])[0], now) || now;
+    // qué slot corresponde a esa ocurrencia
+    var slot = (ev.slots || [])[0];
+    (ev.slots || []).forEach(function (s) { var o = slotOcc(s, now); if (o && +o === +occ) slot = s; });
+    var timed = !!(slot && slot.time);
+    var dates, recur = "";
+    if (timed) {
+      var e = new Date(occ.getTime() + 60 * 60000);
+      dates = stampLocal(occ) + "/" + stampLocal(e);
     } else {
-      var d0 = new Date(+p[0], +p[1]-1, +p[2]);
-      var d1 = new Date(d0.getTime() + 86400000);
-      dates = ymd(d0) + "/" + ymd(d1);
+      var d1 = new Date(occ.getTime() + 86400000);
+      dates = ymd(occ) + "/" + ymd(d1);
     }
+    if (isWeekly(slot)) recur = "&recur=" + encodeURIComponent("RRULE:FREQ=WEEKLY;BYDAY=" + DOW_ICS[+slot.dow]);
     var tz = "";
-    try { tz = "&ctz=" + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone); } catch (e) {}
+    try { tz = "&ctz=" + encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone); } catch (e2) {}
     return "https://calendar.google.com/calendar/render?action=TEMPLATE" +
       "&text=" + encodeURIComponent(ev.title) +
-      "&dates=" + dates +
+      "&dates=" + dates + recur +
       "&details=" + encodeURIComponent(t.name + (ev.note ? " — " + ev.note : "")) + tz;
   }
 
+  // .ics con un VEVENT por cada día/horario, con aviso. Los semanales se repiten cada semana.
   function buildIcs(ev) {
     var t = TYPE[ev.type] || TYPE.other;
-    var p = ev.date.split("-"), dtstart, dtend, alarm;
-    if (ev.time) {
-      var tp = ev.time.split(":");
-      var s = new Date(+p[0], +p[1]-1, +p[2], +tp[0], +tp[1]);
-      var e = new Date(s.getTime() + 60 * 60000);
-      var f = function (d) { return ymd(d) + "T" + pad(d.getHours()) + pad(d.getMinutes()) + "00"; };
-      dtstart = "DTSTART:" + f(s); dtend = "DTEND:" + f(e);
-      alarm = "TRIGGER:-PT2H"; // aviso 2 h antes
-    } else {
-      var d0 = new Date(+p[0], +p[1]-1, +p[2]);
-      var d1 = new Date(d0.getTime() + 86400000);
-      dtstart = "DTSTART;VALUE=DATE:" + ymd(d0); dtend = "DTEND;VALUE=DATE:" + ymd(d1);
-      alarm = "TRIGGER:PT9H"; // aviso a las 9 del día del evento
-    }
-    var lines = [
-      "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MiPanel//ES", "CALSCALE:GREGORIAN",
-      "BEGIN:VEVENT",
-      "UID:" + ev.id + "@mipanel",
-      dtstart, dtend,
-      "SUMMARY:" + icsEsc(ev.title),
-      "DESCRIPTION:" + icsEsc(t.name + (ev.note ? " — " + ev.note : "")),
-      "BEGIN:VALARM", alarm, "ACTION:DISPLAY", "DESCRIPTION:" + icsEsc(ev.title), "END:VALARM",
-      "END:VEVENT", "END:VCALENDAR"
-    ];
+    var now = new Date();
+    var desc = icsEsc(t.name + (ev.note ? " — " + ev.note : ""));
+    var lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MiPanel//ES", "CALSCALE:GREGORIAN"];
+    (ev.slots || []).forEach(function (s, i) {
+      var occ = slotOcc(s, now); if (!occ) return;
+      var dtstart, dtend, alarm, rrule = "";
+      if (s.time) {
+        var e = new Date(occ.getTime() + 60 * 60000);
+        dtstart = "DTSTART:" + stampLocal(occ); dtend = "DTEND:" + stampLocal(e);
+        alarm = "TRIGGER:-PT2H";
+      } else {
+        var d1 = new Date(occ.getTime() + 86400000);
+        dtstart = "DTSTART;VALUE=DATE:" + ymd(occ); dtend = "DTEND;VALUE=DATE:" + ymd(d1);
+        alarm = "TRIGGER:PT9H";
+      }
+      if (isWeekly(s)) rrule = "RRULE:FREQ=WEEKLY;BYDAY=" + DOW_ICS[+s.dow];
+      lines.push("BEGIN:VEVENT", "UID:" + ev.id + "-" + i + "@mipanel", "DTSTAMP:" + stampLocal(now), dtstart, dtend);
+      if (rrule) lines.push(rrule);
+      lines.push("SUMMARY:" + icsEsc(ev.title), "DESCRIPTION:" + desc,
+        "BEGIN:VALARM", alarm, "ACTION:DISPLAY", "DESCRIPTION:" + icsEsc(ev.title), "END:VALARM", "END:VEVENT");
+    });
+    lines.push("END:VCALENDAR");
     return lines.join("\r\n");
   }
   function icsEsc(s) { return (s || "").replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n"); }
@@ -682,12 +912,13 @@
     $("sumMonth").textContent = fmt(total);
     $("sumCount").textContent = count ? count + (count === 1 ? " gasto este mes" : " gastos este mes") : "Sin gastos este mes";
 
-    var up = data.events.filter(function (ev) { return daysUntil(ev.date) >= 0; })
-      .sort(function (a, b) { return a.date < b.date ? -1 : 1; });
+    var up = data.events.map(function (ev) { return { ev: ev, occ: eventNextOcc(ev, now) }; })
+      .filter(function (u) { return u.occ; })
+      .sort(function (a, b) { return a.occ - b.occ; });
     if (up.length) {
-      var ev = up[0], t = TYPE[ev.type] || TYPE.other, d = daysUntil(ev.date);
+      var ev = up[0].ev, t = TYPE[ev.type] || TYPE.other;
       $("nextTitle").textContent = ev.title;
-      $("nextWhen").textContent = t.name + " · " + relLabel(d) + " (" + fmtDate(ev.date) + ")";
+      $("nextWhen").textContent = t.name + " · " + occLabel(up[0].occ);
     } else {
       $("nextTitle").textContent = "Nada agendado";
       $("nextWhen").textContent = "Agregá tu primer evento";
@@ -738,6 +969,87 @@
     if (!confirm("¿Seguro que querés borrar TODOS los gastos y eventos? No se puede deshacer.")) return;
     data.expenses = []; data.events = []; save(); renderAll(); toast("Todo borrado");
   });
+
+  // ---------- sincronización (Firebase) ----------
+  var SYNC_KEY = "miPanel_syncCode";
+  var db = null, docRef = null, unsub = null, applyingRemote = false, fbTried = false;
+
+  function initFirebase() {
+    if (db) return true;
+    if (fbTried) return !!db;
+    fbTried = true;
+    if (typeof firebase === "undefined" || !firebase.initializeApp) return false;
+    try {
+      if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
+      db = firebase.firestore();
+      return true;
+    } catch (e) { return false; }
+  }
+
+  function setSyncUI(connected, msg) {
+    var badge = $("syncBadge");
+    badge.textContent = connected ? "Conectado ✓" : "Sin conectar";
+    badge.classList.toggle("on", !!connected);
+    $("syncConnect").hidden = connected;
+    $("syncDisconnect").hidden = !connected;
+    if (msg) $("syncStatus").textContent = msg;
+  }
+
+  function pushCloud() {
+    if (!docRef) return;
+    try { docRef.set({ name: data.name, expenses: data.expenses, events: data.events, _ts: Date.now() }); } catch (e) {}
+  }
+
+  function afterRemote() {
+    $("greet").textContent = "Hola, " + (data.name || "Santi");
+    renderAll();
+  }
+
+  function connectSync(code) {
+    code = (code || "").trim();
+    if (!code) { setSyncUI(false, "Escribí un código para conectar."); return; }
+    if (!initFirebase()) { setSyncUI(false, "La sincronización solo funciona en el sitio web publicado (no en esta vista previa)."); return; }
+    try { localStorage.setItem(SYNC_KEY, code); } catch (e) {}
+    docRef = db.collection("paneles").doc(code);
+    setSyncUI(true, "Conectando…");
+    docRef.get().then(function (snap) {
+      var d = snap.exists ? snap.data() : null;
+      if (d && (d.expenses || d.events)) {
+        applyingRemote = true; data = normalize(d); save(); applyingRemote = false; afterRemote();
+      } else {
+        pushCloud();
+      }
+      listenCloud();
+      setSyncUI(true, "✅ Conectado como “" + code + "”. Se sincroniza solo entre todos tus dispositivos con este código.");
+    }).catch(function (e) {
+      setSyncUI(false, "No se pudo conectar: " + (e && e.message ? e.message : e));
+    });
+  }
+
+  function listenCloud() {
+    if (unsub) unsub();
+    unsub = docRef.onSnapshot(function (snap) {
+      if (!snap.exists) return;
+      if (snap.metadata && snap.metadata.hasPendingWrites) return; // fue nuestro propio cambio
+      applyingRemote = true; data = normalize(snap.data()); save(); applyingRemote = false; afterRemote();
+    }, function () {});
+  }
+
+  function disconnectSync() {
+    if (unsub) { unsub(); unsub = null; }
+    docRef = null;
+    try { localStorage.removeItem(SYNC_KEY); } catch (e) {}
+    setSyncUI(false, "Desconectado. Los datos quedan solo en este aparato.");
+  }
+
+  $("syncConnect").addEventListener("click", function () { connectSync($("syncCode").value); });
+  $("syncDisconnect").addEventListener("click", disconnectSync);
+
+  // auto-conectar si ya guardaste un código antes
+  (function () {
+    var saved = null; try { saved = localStorage.getItem(SYNC_KEY); } catch (e) {}
+    if (saved) { $("syncCode").value = saved; connectSync(saved); }
+  })();
 
   // ---------- helpers ----------
   function delBtn(kind, id) {
