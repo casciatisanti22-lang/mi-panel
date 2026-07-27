@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#0f766e">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Mi Panel · Gastos y Eventos</title>
 <style>
   :root {
@@ -259,23 +262,8 @@
 </head>
 <body>
 
-<!-- ================= LOCK / WELCOME ================= -->
-<div id="lock" hidden>
-  <div class="box">
-    <div class="mark">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
-    </div>
-    <h2 id="lockTitle">Hola 👋</h2>
-    <p id="lockSub">¿Cómo te llamás? Así personalizo tu panel.</p>
-    <form id="lockForm">
-      <input id="lockInput" type="text" placeholder="Tu nombre" autocomplete="off" />
-      <button class="btn" type="submit" id="lockBtn">Entrar</button>
-    </form>
-  </div>
-</div>
-
 <!-- ================= APP ================= -->
-<div class="wrap" id="app" hidden>
+<div class="wrap" id="app">
   <header class="app">
     <div class="brand">
       <div class="mark">
@@ -481,28 +469,13 @@
 
   // ---------- refs ----------
   var $ = function (id) { return document.getElementById(id); };
-  var lock = $("lock"), app = $("app");
 
   // ---------- boot ----------
-  // El acceso se engancha PRIMERO y por varias vías, para que "Entrar" nunca falle.
-  function doEnter() {
-    var v = ($("lockInput").value || "").trim();
-    if (v) data.name = v;
-    save();          // seguro: no rompe si el navegador bloquea el guardado
-    enter();
-  }
-  var lockForm = $("lockForm");
-  lockForm.addEventListener("submit", function (e) { e.preventDefault(); doEnter(); return false; });
-  $("lockBtn").addEventListener("click", function (e) { e.preventDefault(); doEnter(); });
-  $("lockInput").addEventListener("keyup", function (e) { if (e.key === "Enter" || e.keyCode === 13) { e.preventDefault(); doEnter(); } });
+  // La app abre directo. El nombre queda fijo (se puede cambiar con el botón "Cambiar nombre").
+  if (!data.name) data.name = "Santi";
+  $("greet").textContent = "Hola, " + data.name;
 
-  function enter() {
-    lock.hidden = true; app.hidden = false;
-    $("greet").textContent = data.name ? "Hola, " + data.name : "Mi Panel";
-    renderAll();
-  }
-
-  // Lo no esencial va después y protegido: si algo falla, igual se puede entrar.
+  // Lo no esencial va protegido: si algo falla, la app igual funciona.
   try {
     initTheme();
     $("today").textContent = DAYS[new Date().getDay()] + ", " + new Date().getDate() + " de " +
@@ -510,7 +483,7 @@
     setDefaultDates();
   } catch (e) {}
 
-  if (data.name) { enter(); } else { lock.hidden = false; $("lockInput").focus(); }
+  renderAll();
 
   function setDefaultDates() {
     var t = new Date();
