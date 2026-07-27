@@ -349,9 +349,32 @@
   }
   @keyframes pop { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
-  @media (max-width: 480px) {
-    .tiles { grid-template-columns: 1fr; }
+  @media (max-width: 560px) {
+    .wrap { padding: 14px 11px 88px; }
+    .tiles { grid-template-columns: 1fr; gap: 10px; }
     .brand h1 { font-size: 1rem; }
+    .card { padding: 13px; margin-bottom: 14px; }
+    .card h2 { font-size: .9rem; margin-bottom: 11px; }
+    .tile { padding: 13px 14px; }
+    .tile .big { font-size: 1.45rem; }
+    .tile.next .big { font-size: 1rem; }
+    .money-row { gap: 7px; }
+    .money-stat { padding: 8px 5px; }
+    .ms-lbl { font-size: .62rem; letter-spacing: .03em; }
+    .ms-val { font-size: .92rem; }
+    .savings-total .big { font-size: 1.55rem; }
+    .seg-btn { font-size: .78rem; padding: 8px 4px; }
+    input, select, textarea { font-size: .9rem; padding: 9px 10px; }
+    .item { padding: 10px 11px; gap: 10px; }
+    .item .lead { width: 36px; height: 36px; font-size: 1rem; }
+    .item .title { font-size: .88rem; }
+    .item .amount { font-size: .92rem; }
+    .item .meta { font-size: .74rem; gap: 6px; }
+    .cat-row { grid-template-columns: 72px 1fr auto; font-size: .77rem; gap: 7px; }
+    .ev-actions .mini, .attach-btn { font-size: .75rem; padding: 6px 10px; }
+    .tabs button { font-size: .82rem; padding: 8px 4px; }
+    .row { gap: 9px; }
+    form { gap: 10px; }
   }
 </style>
 </head>
@@ -647,7 +670,9 @@
 
   // ---------- formatting ----------
   var money = new Intl.NumberFormat("es-AR", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  var usdFmt = new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
   function fmt(n) { return "$" + money.format(n || 0); }
+  function usd(n) { return "US$ " + usdFmt.format(n || 0); }
   var MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
   var DAYS = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 
@@ -892,8 +917,6 @@
   $("budgetEdit").addEventListener("click", setBudget);
 
   // ---------- ahorros en USD ----------
-  var usdFmt = new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-  function usd(n) { return "US$ " + usdFmt.format(n || 0); }
   var savKind = "in";
 
   $("savKind").addEventListener("click", function (e) {
