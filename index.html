@@ -3,69 +3,70 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#8c5e3c">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <title>Mi Panel · Gastos y Eventos</title>
 <style>
+  /* Paleta tierra / beige — minimalista */
   :root {
-    --bg: #f4f3ee;
-    --surface: #ffffff;
-    --surface-2: #eceae2;
-    --border: #e0ded4;
-    --border-strong: #cfccbf;
-    --text: #1e2320;
-    --muted: #6c726a;
-    --faint: #949a90;
-    --accent: #0f766e;
-    --accent-ink: #0b5a53;
-    --accent-soft: #d8ebe8;
-    --shadow: 0 1px 2px rgba(30,35,32,.06), 0 8px 24px -12px rgba(30,35,32,.18);
+    --bg: #e8e0d0;
+    --surface: #f6f1e8;
+    --surface-2: #ede4d3;
+    --border: #dccfb8;
+    --border-strong: #c7b699;
+    --text: #322820;
+    --muted: #7a6a54;
+    --faint: #a3927a;
+    --accent: #8c5e3c;
+    --accent-ink: #6a4425;
+    --accent-soft: #e6d6c1;
+    --shadow: 0 1px 2px rgba(70,50,30,.04), 0 4px 16px -12px rgba(70,50,30,.14);
 
-    --med: #d6455f;        /* médico */
-    --med-soft: #fbe1e6;
-    --train: #1f9d57;      /* entrenamiento */
-    --train-soft: #dcf2e4;
-    --other: #5b63d6;      /* otro */
-    --other-soft: #e3e4fa;
+    --med: #b85a44;        /* médico */
+    --med-soft: #ecd6cd;
+    --train: #7b8a52;      /* entrenamiento */
+    --train-soft: #e1e5cd;
+    --other: #6d7c86;      /* otro */
+    --other-soft: #dae1e1;
 
     --radius: 14px;
     --radius-sm: 10px;
-    --maxw: 760px;
+    --maxw: 720px;
   }
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #0f1312;
-      --surface: #171c1a;
-      --surface-2: #1f2624;
-      --border: #2a312e;
-      --border-strong: #384039;
-      --text: #e7eae6;
-      --muted: #9aa39c;
-      --faint: #727b74;
-      --accent: #2dd4bf;
-      --accent-ink: #7ee7d8;
-      --accent-soft: #123330;
-      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.6);
+      --bg: #1a150f;
+      --surface: #241d15;
+      --surface-2: #2d2418;
+      --border: #392f22;
+      --border-strong: #4a3e2d;
+      --text: #ece3d2;
+      --muted: #a89a82;
+      --faint: #7b6d57;
+      --accent: #cb9d6f;
+      --accent-ink: #e4c39c;
+      --accent-soft: #38291b;
+      --shadow: 0 1px 2px rgba(0,0,0,.35), 0 8px 26px -14px rgba(0,0,0,.55);
 
-      --med: #f2708a; --med-soft: #351a20;
-      --train: #55c983; --train-soft: #14301f;
-      --other: #9ba1f5; --other-soft: #1e2040;
+      --med: #d9836a; --med-soft: #37231d;
+      --train: #a8b473; --train-soft: #262b17;
+      --other: #98a6ae; --other-soft: #222a2d;
     }
   }
   :root[data-theme="light"] {
-    --bg:#f4f3ee; --surface:#fff; --surface-2:#eceae2; --border:#e0ded4; --border-strong:#cfccbf;
-    --text:#1e2320; --muted:#6c726a; --faint:#949a90; --accent:#0f766e; --accent-ink:#0b5a53; --accent-soft:#d8ebe8;
-    --shadow:0 1px 2px rgba(30,35,32,.06),0 8px 24px -12px rgba(30,35,32,.18);
-    --med:#d6455f; --med-soft:#fbe1e6; --train:#1f9d57; --train-soft:#dcf2e4; --other:#5b63d6; --other-soft:#e3e4fa;
+    --bg:#e8e0d0; --surface:#f6f1e8; --surface-2:#ede4d3; --border:#dccfb8; --border-strong:#c7b699;
+    --text:#322820; --muted:#7a6a54; --faint:#a3927a; --accent:#8c5e3c; --accent-ink:#6a4425; --accent-soft:#e6d6c1;
+    --shadow:0 1px 2px rgba(70,50,30,.04),0 4px 16px -12px rgba(70,50,30,.14);
+    --med:#b85a44; --med-soft:#ecd6cd; --train:#7b8a52; --train-soft:#e1e5cd; --other:#6d7c86; --other-soft:#dae1e1;
   }
   :root[data-theme="dark"] {
-    --bg:#0f1312; --surface:#171c1a; --surface-2:#1f2624; --border:#2a312e; --border-strong:#384039;
-    --text:#e7eae6; --muted:#9aa39c; --faint:#727b74; --accent:#2dd4bf; --accent-ink:#7ee7d8; --accent-soft:#123330;
-    --shadow:0 1px 2px rgba(0,0,0,.4),0 10px 30px -14px rgba(0,0,0,.6);
-    --med:#f2708a; --med-soft:#351a20; --train:#55c983; --train-soft:#14301f; --other:#9ba1f5; --other-soft:#1e2040;
+    --bg:#1a150f; --surface:#241d15; --surface-2:#2d2418; --border:#392f22; --border-strong:#4a3e2d;
+    --text:#ece3d2; --muted:#a89a82; --faint:#7b6d57; --accent:#cb9d6f; --accent-ink:#e4c39c; --accent-soft:#38291b;
+    --shadow:0 1px 2px rgba(0,0,0,.35),0 8px 26px -14px rgba(0,0,0,.55);
+    --med:#d9836a; --med-soft:#37231d; --train:#a8b473; --train-soft:#262b17; --other:#98a6ae; --other-soft:#222a2d;
   }
 
   * { box-sizing: border-box; }
@@ -179,7 +180,7 @@
   .budget-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .bar-track { height: 12px; border-radius: 999px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--border); }
   .bar-fill { height: 100%; width: 0; border-radius: 999px; background: var(--train); transition: width .4s ease; }
-  .bar-fill.warn { background: #e0a83a; }
+  .bar-fill.warn { background: #c2924a; }
   .bar-fill.over { background: var(--med); }
   .budget-info { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 6px; font-size: .82rem; color: var(--muted); }
   .budget-info .over-txt { color: var(--med); font-weight: 600; }
@@ -204,6 +205,17 @@
   .save-item .s-amt { font-weight: 700; font-variant-numeric: tabular-nums; margin-left: auto; }
   .save-item .s-amt.in { color: var(--train); }
   .save-item .s-amt.out { color: var(--med); }
+
+  /* ---------- Gastos fijos ---------- */
+  .fixed-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+  .fixed-item { display: flex; align-items: center; gap: 10px; padding: 9px 11px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .fixed-item .fx-body { flex: 1; min-width: 0; }
+  .fixed-item .fx-name { font-weight: 600; font-size: .88rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .fixed-item .fx-meta { font-size: .74rem; color: var(--muted); margin-top: 1px; display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+  .fixed-item .fx-done { color: var(--train); font-weight: 600; }
+  .fixed-form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .fixed-form #fxName, .fixed-form button { grid-column: 1 / -1; }
+  .fixed-form input, .fixed-form select { min-width: 0; }
 
   /* ---------- Adjuntos ---------- */
   .attach-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
@@ -463,6 +475,18 @@
       </form>
     </div>
 
+    <div class="card" id="fixedCard">
+      <h2>📌 Gastos fijos</h2>
+      <p class="note" style="margin-bottom:12px">Cargalos rápido cada mes. El monto lo ponés al cargar, porque puede variar.</p>
+      <div class="fixed-list" id="fixedList"></div>
+      <form class="fixed-form" id="fixedForm">
+        <input id="fxName" type="text" placeholder="Nombre (ej: Alquiler)" autocomplete="off" />
+        <select id="fxCat"></select>
+        <input id="fxAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Monto habitual" />
+        <button class="btn sm" type="submit">＋ Agregar fijo</button>
+      </form>
+    </div>
+
     <div class="card" id="moneyCard">
       <h2>Este mes</h2>
       <div class="money-row">
@@ -636,15 +660,16 @@
       var d = JSON.parse(localStorage.getItem(KEY));
       if (d && typeof d === "object") return normalize(d);
     } catch (e) {}
-    return { name: "", budget: 0, expenses: [], events: [], savings: [] };
+    return { name: "", budget: 0, expenses: [], events: [], savings: [], fixed: [] };
   }
 
   // Normaliza datos y migra eventos viejos (fecha/hora) al nuevo formato con "slots".
   function normalize(d) {
     d = d || {};
-    var out = { name: d.name || "", budget: +d.budget || 0, expenses: [], events: [], savings: [] };
+    var out = { name: d.name || "", budget: +d.budget || 0, expenses: [], events: [], savings: [], fixed: [] };
     if (Array.isArray(d.expenses)) out.expenses = d.expenses;
     if (Array.isArray(d.savings)) out.savings = d.savings;
+    if (Array.isArray(d.fixed)) out.fixed = d.fixed;
     if (Array.isArray(d.events)) out.events = d.events.map(migrateEvent);
     return out;
   }
@@ -1274,11 +1299,68 @@
     }
   }
 
-  function renderAll() { renderSummary(); renderMoney(); renderSavings(); renderToday(); renderExpenses(); renderEvents(); }
+  // ---------- gastos fijos ----------
+  function curYM() { return new Date().getFullYear() + "-" + pad(new Date().getMonth() + 1); }
+  function fillFxCats() { $("fxCat").innerHTML = CATS_OUT.map(function (c) { return '<option>' + c + '</option>'; }).join(""); }
+  fillFxCats();
+
+  $("fixedForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var name = $("fxName").value.trim();
+    var amt = parseFloat($("fxAmount").value);
+    if (!name) { $("fxName").focus(); return; }
+    data.fixed = data.fixed || [];
+    data.fixed.push({ id: uid(), name: name, cat: $("fxCat").value, lastAmount: isNaN(amt) ? 0 : amt, lastLoaded: "" });
+    save();
+    $("fxName").value = ""; $("fxAmount").value = "";
+    renderFixed();
+    toast("Gasto fijo agregado");
+  });
+
+  function renderFixed() {
+    var box = $("fixedList");
+    var list = data.fixed || [];
+    if (!list.length) { box.innerHTML = '<div class="empty" style="padding:14px">Todavía no cargaste gastos fijos</div>'; return; }
+    var ym = curYM();
+    box.innerHTML = list.map(function (f) {
+      var done = f.lastLoaded === ym;
+      return '<div class="fixed-item">' +
+        '<div style="width:34px;height:34px;flex:none;border-radius:9px;background:var(--surface);display:grid;place-items:center;font-size:1rem">' + (CAT_ICON[f.cat] || "🧾") + '</div>' +
+        '<div class="fx-body"><div class="fx-name">' + esc(f.name) + '</div>' +
+        '<div class="fx-meta"><span>' + f.cat + '</span>' + (f.lastAmount ? '<span>≈ ' + fmt(f.lastAmount) + '</span>' : '') +
+        (done ? '<span class="fx-done">✓ cargado este mes</span>' : '') + '</div></div>' +
+        (done ? '' : '<button class="mini" data-fxload="' + f.id + '">＋ Cargar</button>') +
+        '<button class="del" data-fxdel="' + f.id + '" title="Quitar" aria-label="Quitar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>' +
+        '</div>';
+    }).join("");
+  }
+
+  $("fixedList").addEventListener("click", function (e) {
+    var load = e.target.closest("[data-fxload]");
+    var del = e.target.closest("[data-fxdel]");
+    if (load) {
+      var f = (data.fixed || []).filter(function (x) { return x.id === load.dataset.fxload; })[0];
+      if (!f) return;
+      var v = prompt("Monto de “" + f.name + "” este mes:", f.lastAmount || "");
+      if (v === null) return;
+      var amt = parseFloat(v);
+      if (isNaN(amt) || amt < 0) { toast("Poné un monto válido"); return; }
+      data.expenses.push({ id: uid(), kind: "out", amount: amt, cat: f.cat, date: todayISO(), note: f.name });
+      f.lastAmount = amt; f.lastLoaded = curYM();
+      save(); renderAll();
+      toast("💸 " + f.name + " cargado");
+    } else if (del) {
+      if (!confirm("¿Quitar este gasto fijo de la lista? (no borra los gastos ya cargados)")) return;
+      data.fixed = (data.fixed || []).filter(function (x) { return x.id !== del.dataset.fxdel; });
+      save(); renderFixed();
+    }
+  });
+
+  function renderAll() { renderSummary(); renderMoney(); renderFixed(); renderSavings(); renderToday(); renderExpenses(); renderEvents(); }
 
   // ---------- delete ----------
   document.addEventListener("click", function (e) {
-    var btn = e.target.closest(".del"); if (!btn) return;
+    var btn = e.target.closest(".del"); if (!btn || !btn.dataset.kind) return;
     var kind = btn.dataset.kind, id = btn.dataset.id;
     if (kind === "exp") data.expenses = data.expenses.filter(function (x) { return x.id !== id; });
     else if (kind === "sav") data.savings = (data.savings || []).filter(function (x) { return x.id !== id; });
@@ -1317,7 +1399,7 @@
   });
   $("wipeBtn").addEventListener("click", function () {
     if (!confirm("¿Seguro que querés borrar TODOS los gastos, ahorros y eventos? No se puede deshacer.")) return;
-    data.expenses = []; data.events = []; data.savings = []; save(); renderAll(); toast("Todo borrado");
+    data.expenses = []; data.events = []; data.savings = []; data.fixed = []; save(); renderAll(); toast("Todo borrado");
   });
 
   // ---------- sincronización (Firebase) ----------
@@ -1347,7 +1429,7 @@
 
   function pushCloud() {
     if (!docRef) return;
-    try { docRef.set({ name: data.name, budget: +data.budget || 0, expenses: data.expenses, events: data.events, savings: data.savings || [], _ts: Date.now() }); } catch (e) {}
+    try { docRef.set({ name: data.name, budget: +data.budget || 0, expenses: data.expenses, events: data.events, savings: data.savings || [], fixed: data.fixed || [], _ts: Date.now() }); } catch (e) {}
   }
 
   function afterRemote() {
