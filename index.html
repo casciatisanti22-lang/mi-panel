@@ -1,3 +1,9 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f766e">
 <title>Mi Panel · Gastos y Eventos</title>
 <style>
   :root {
@@ -250,6 +256,8 @@
     .brand h1 { font-size: 1rem; }
   }
 </style>
+</head>
+<body>
 
 <!-- ================= LOCK / WELCOME ================= -->
 <div id="lock" hidden>
@@ -261,7 +269,7 @@
     <p id="lockSub">¿Cómo te llamás? Así personalizo tu panel.</p>
     <form id="lockForm">
       <input id="lockInput" type="text" placeholder="Tu nombre" autocomplete="off" />
-      <button class="btn" type="submit">Entrar</button>
+      <button class="btn" type="submit" id="lockBtn">Entrar</button>
     </form>
   </div>
 </div>
@@ -476,25 +484,33 @@
   var lock = $("lock"), app = $("app");
 
   // ---------- boot ----------
-  initTheme();
-  $("today").textContent = DAYS[new Date().getDay()] + ", " + new Date().getDate() + " de " +
-    ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"][new Date().getMonth()];
-  setDefaultDates();
-
-  if (data.name) { enter(); } else { lock.hidden = false; }
-
-  $("lockForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    var v = $("lockInput").value.trim();
-    if (!v) { $("lockInput").focus(); return; }
-    data.name = v; save(); enter();
-  });
+  // El acceso se engancha PRIMERO y por varias vías, para que "Entrar" nunca falle.
+  function doEnter() {
+    var v = ($("lockInput").value || "").trim();
+    if (v) data.name = v;
+    save();          // seguro: no rompe si el navegador bloquea el guardado
+    enter();
+  }
+  var lockForm = $("lockForm");
+  lockForm.addEventListener("submit", function (e) { e.preventDefault(); doEnter(); return false; });
+  $("lockBtn").addEventListener("click", function (e) { e.preventDefault(); doEnter(); });
+  $("lockInput").addEventListener("keyup", function (e) { if (e.key === "Enter" || e.keyCode === 13) { e.preventDefault(); doEnter(); } });
 
   function enter() {
     lock.hidden = true; app.hidden = false;
-    $("greet").textContent = "Hola, " + data.name;
+    $("greet").textContent = data.name ? "Hola, " + data.name : "Mi Panel";
     renderAll();
   }
+
+  // Lo no esencial va después y protegido: si algo falla, igual se puede entrar.
+  try {
+    initTheme();
+    $("today").textContent = DAYS[new Date().getDay()] + ", " + new Date().getDate() + " de " +
+      ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"][new Date().getMonth()];
+    setDefaultDates();
+  } catch (e) {}
+
+  if (data.name) { enter(); } else { lock.hidden = false; $("lockInput").focus(); }
 
   function setDefaultDates() {
     var t = new Date();
@@ -767,3 +783,6 @@
   }
 })();
 </script>
+
+</body>
+</html>
