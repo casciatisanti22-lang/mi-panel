@@ -192,6 +192,47 @@
   .cat-amt { font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .item .amount.in { color: var(--train); }
 
+  /* ---------- Ahorros USD ---------- */
+  .savings-total { display: flex; align-items: baseline; gap: 8px; margin: 2px 0 14px; }
+  .savings-total .big { font-size: 1.9rem; font-weight: 800; letter-spacing: -.02em; color: var(--train); }
+  .savings-total .cur { font-size: .8rem; font-weight: 700; color: var(--muted); letter-spacing: .04em; }
+  .save-form { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .save-form input[type="number"] { flex: 1; min-width: 110px; }
+  .save-form .seg { flex: none; }
+  .save-list { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+  .save-item { display: flex; align-items: center; gap: 10px; font-size: .85rem; padding: 7px 2px; border-bottom: 1px solid var(--border); }
+  .save-item .s-amt { font-weight: 700; font-variant-numeric: tabular-nums; margin-left: auto; }
+  .save-item .s-amt.in { color: var(--train); }
+  .save-item .s-amt.out { color: var(--med); }
+
+  /* ---------- Adjuntos ---------- */
+  .attach-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 4px; }
+  .attach-btn {
+    font-family: inherit; font-size: .82rem; font-weight: 600; cursor: pointer;
+    border: 1px dashed var(--border-strong); background: var(--surface-2); color: var(--muted);
+    border-radius: var(--radius-sm); padding: 9px 13px; transition: .15s;
+  }
+  .attach-btn:hover { border-color: var(--accent); color: var(--accent-ink); }
+  .thumbs { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
+  .thumb { position: relative; width: 54px; height: 54px; border-radius: 9px; overflow: hidden; border: 1px solid var(--border); cursor: pointer; background: var(--surface-2); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb .x {
+    position: absolute; top: 2px; right: 2px; width: 18px; height: 18px; border-radius: 50%;
+    background: rgba(0,0,0,.6); color: #fff; border: 0; cursor: pointer; font-size: .7rem; line-height: 1; display: grid; place-items: center;
+  }
+  .ev-files { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .ev-file { width: 46px; height: 46px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); cursor: pointer; }
+  .ev-file img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* ---------- Lightbox ---------- */
+  #lightbox {
+    position: fixed; inset: 0; background: rgba(0,0,0,.85); z-index: 70;
+    display: grid; place-items: center; padding: 20px; cursor: zoom-out;
+  }
+  #lightbox[hidden] { display: none; }
+  #lightbox img { max-width: 100%; max-height: 100%; border-radius: 10px; }
+  #lightbox .lb-close { position: absolute; top: 14px; right: 16px; color: #fff; font-size: 2rem; background: none; border: 0; cursor: pointer; line-height: 1; }
+
   /* ---------- Tabs ---------- */
   .tabs {
     display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--border);
@@ -424,6 +465,24 @@
       </div>
     </div>
 
+    <div class="card" id="savingsCard">
+      <h2>💵 Ahorros en dólares</h2>
+      <div class="savings-total">
+        <span class="big num" id="savTotal">US$ 0</span>
+        <span class="cur">USD</span>
+      </div>
+      <form class="save-form" id="savForm">
+        <div class="seg" id="savKind">
+          <button type="button" class="seg-btn active" data-kind="in">＋ Sumar</button>
+          <button type="button" class="seg-btn" data-kind="out">− Sacar</button>
+        </div>
+        <input id="savAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="Monto USD" />
+        <input id="savNote" type="text" placeholder="Nota (opcional)" style="flex:1;min-width:120px" />
+        <button class="btn sm" type="submit">Guardar</button>
+      </form>
+      <div class="save-list" id="savList"></div>
+    </div>
+
     <div id="expList"></div>
   </section>
 
@@ -461,6 +520,14 @@
         <div class="field full">
           <label class="f" for="evNote">Nota (opcional)</label>
           <input id="evNote" type="text" placeholder="Dirección, indicaciones..." />
+        </div>
+        <div class="field full">
+          <label class="f">Archivos (opcional)</label>
+          <div class="attach-row">
+            <button type="button" class="attach-btn" id="attachBtn">📎 Adjuntar foto</button>
+            <input type="file" id="attachInput" accept="image/*" multiple hidden />
+          </div>
+          <div class="thumbs" id="attachThumbs"></div>
         </div>
         <button class="btn" type="submit">Guardar evento</button>
       </form>
@@ -520,6 +587,8 @@
   </section>
 </div>
 
+<div id="lightbox" hidden><button class="lb-close" id="lbClose" aria-label="Cerrar">✕</button><img id="lbImg" alt="adjunto" /></div>
+
 <!-- Firebase (solo carga en el sitio web; en la vista previa de Claude no, y no pasa nada) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
@@ -544,23 +613,25 @@
       var d = JSON.parse(localStorage.getItem(KEY));
       if (d && typeof d === "object") return normalize(d);
     } catch (e) {}
-    return { name: "", budget: 0, expenses: [], events: [] };
+    return { name: "", budget: 0, expenses: [], events: [], savings: [] };
   }
 
   // Normaliza datos y migra eventos viejos (fecha/hora) al nuevo formato con "slots".
   function normalize(d) {
     d = d || {};
-    var out = { name: d.name || "", budget: +d.budget || 0, expenses: [], events: [] };
+    var out = { name: d.name || "", budget: +d.budget || 0, expenses: [], events: [], savings: [] };
     if (Array.isArray(d.expenses)) out.expenses = d.expenses;
+    if (Array.isArray(d.savings)) out.savings = d.savings;
     if (Array.isArray(d.events)) out.events = d.events.map(migrateEvent);
     return out;
   }
   function migrateEvent(ev) {
-    if (ev && ev.slots && ev.slots.length) return ev;
+    ev = ev || {};
+    if (ev.slots && ev.slots.length) { ev.files = ev.files || []; return ev; }
     return {
-      id: (ev && ev.id) || uid(), title: (ev && ev.title) || "",
-      type: (ev && ev.type) || "other", note: (ev && ev.note) || "",
-      repeat: "once", slots: [{ date: ev && ev.date, time: (ev && ev.time) || "" }]
+      id: ev.id || uid(), title: ev.title || "",
+      type: ev.type || "other", note: ev.note || "",
+      repeat: "once", slots: [{ date: ev.date, time: ev.time || "" }], files: ev.files || []
     };
   }
 
@@ -820,6 +891,53 @@
   $("budgetSet").addEventListener("click", setBudget);
   $("budgetEdit").addEventListener("click", setBudget);
 
+  // ---------- ahorros en USD ----------
+  var usdFmt = new Intl.NumberFormat("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+  function usd(n) { return "US$ " + usdFmt.format(n || 0); }
+  var savKind = "in";
+
+  $("savKind").addEventListener("click", function (e) {
+    var b = e.target.closest(".seg-btn"); if (!b) return;
+    savKind = b.dataset.kind;
+    document.querySelectorAll("#savKind .seg-btn").forEach(function (x) { x.classList.toggle("active", x === b); });
+  });
+
+  $("savForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var amt = parseFloat($("savAmount").value);
+    if (isNaN(amt) || amt <= 0) { $("savAmount").focus(); return; }
+    data.savings = data.savings || [];
+    data.savings.push({ id: uid(), kind: savKind, amount: amt, date: todayISO(), note: $("savNote").value.trim() });
+    save();
+    $("savAmount").value = ""; $("savNote").value = "";
+    renderSavings();
+    toast(savKind === "in" ? "💵 Sumado a tus ahorros" : "💵 Restado de tus ahorros");
+  });
+
+  function savingsTotal() {
+    return (data.savings || []).reduce(function (s, m) { return s + (m.kind === "out" ? -m.amount : m.amount); }, 0);
+  }
+
+  function renderSavings() {
+    var tot = savingsTotal();
+    var el = $("savTotal");
+    el.textContent = usd(tot);
+    el.className = "big num";
+    el.style.color = tot < 0 ? "var(--med)" : "var(--train)";
+    var list = (data.savings || []).slice().reverse();
+    var box = $("savList");
+    if (!list.length) { box.innerHTML = ""; return; }
+    box.innerHTML = list.map(function (m) {
+      var inc = m.kind !== "out";
+      return '<div class="save-item">' +
+        '<span>' + (inc ? "＋" : "−") + '</span>' +
+        '<span>' + (esc(m.note) || (inc ? "Ahorro" : "Retiro")) + '</span>' +
+        '<span style="color:var(--faint);font-size:.76rem">' + fmtDate(m.date) + '</span>' +
+        '<span class="s-amt ' + (inc ? "in" : "out") + '">' + (inc ? "+" : "−") + usd(m.amount) + '</span>' +
+        delBtn("sav", m.id) + '</div>';
+    }).join("");
+  }
+
   // ---------- events: formulario con varios días/horarios ----------
   var repMode = "once";
   var slotRows = $("slotRows");
@@ -880,13 +998,75 @@
     var slots = collectSlots();
     if (!title) { $("evTitle").focus(); return; }
     if (!slots.length) { toast("Agregá al menos un día"); return; }
-    var ev = { id: uid(), title: title, type: $("evType").value, note: $("evNote").value.trim(), repeat: repMode, slots: slots };
+    var ev = { id: uid(), title: title, type: $("evType").value, note: $("evNote").value.trim(), repeat: repMode, slots: slots, files: pendingFiles.slice() };
     data.events.push(ev);
     save();
     $("evTitle").value = ""; $("evNote").value = "";
+    pendingFiles = []; renderThumbs();
     resetSlots();
     renderAll();
     notifyEvent(ev);
+  });
+
+  // ---------- adjuntar fotos ----------
+  var pendingFiles = [];
+  var MAX_FILE_BYTES = 900000; // límite para no romper la sincronización (doc <1MB)
+
+  $("attachBtn").addEventListener("click", function () { $("attachInput").click(); });
+  $("attachInput").addEventListener("change", function (e) {
+    var files = Array.prototype.slice.call(e.target.files || []);
+    files.forEach(function (f) {
+      if (/^image\//.test(f.type)) {
+        compressImage(f, function (dataUrl) { addPending(f.name, dataUrl); });
+      } else {
+        toast("Por ahora solo fotos");
+      }
+    });
+    e.target.value = "";
+  });
+
+  function addPending(name, dataUrl) {
+    if (dataUrl.length > MAX_FILE_BYTES) { toast("La foto es muy grande, probá con otra"); return; }
+    pendingFiles.push({ name: name || "foto", type: "image", dataUrl: dataUrl });
+    renderThumbs();
+  }
+
+  function renderThumbs() {
+    var box = $("attachThumbs");
+    box.innerHTML = pendingFiles.map(function (f, i) {
+      return '<div class="thumb"><img src="' + f.dataUrl + '" alt=""><button type="button" class="x" data-thumb="' + i + '">✕</button></div>';
+    }).join("");
+  }
+  $("attachThumbs").addEventListener("click", function (e) {
+    var x = e.target.closest("[data-thumb]"); if (!x) return;
+    pendingFiles.splice(+x.dataset.thumb, 1); renderThumbs();
+  });
+
+  function compressImage(file, cb) {
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      var max = 1100, w = img.width, h = img.height;
+      if (w > max || h > max) { if (w > h) { h = Math.round(h * max / w); w = max; } else { w = Math.round(w * max / h); h = max; } }
+      var c = document.createElement("canvas"); c.width = w; c.height = h;
+      c.getContext("2d").drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      var out = c.toDataURL("image/jpeg", 0.6);
+      cb(out);
+    };
+    img.onerror = function () { URL.revokeObjectURL(url); toast("No se pudo leer la foto"); };
+    img.src = url;
+  }
+
+  // visor (lightbox)
+  function openLightbox(src) { $("lbImg").src = src; $("lightbox").hidden = false; }
+  function closeLightbox() { $("lightbox").hidden = true; $("lbImg").src = ""; }
+  $("lightbox").addEventListener("click", closeLightbox);
+  $("lbClose").addEventListener("click", closeLightbox);
+  document.addEventListener("click", function (e) {
+    var f = e.target.closest("[data-file]"); if (!f) return;
+    var ev = findEvent(f.dataset.evid); if (!ev || !ev.files) return;
+    var file = ev.files[+f.dataset.file]; if (file) openLightbox(file.dataUrl);
   });
 
   function renderEvents() {
@@ -930,12 +1110,15 @@
         '<button class="mini" data-cal="i" data-id="' + ev.id + '">📅 Agendar con avisos</button>' +
         '<button class="mini" data-cal="g" data-id="' + ev.id + '">Abrir en Google</button>' +
       '</div>';
+    var files = (ev.files && ev.files.length) ? '<div class="ev-files">' + ev.files.map(function (f, i) {
+      return '<div class="ev-file" data-file="' + i + '" data-evid="' + ev.id + '"><img src="' + f.dataUrl + '" alt="adjunto"></div>';
+    }).join("") + '</div>' : '';
     return '<div class="item' + (isPast ? ' done' : '') + '">' +
       '<div class="lead" style="background:var(--' + t.cls + '-soft)">' + t.icon + '</div>' +
       '<div class="body"><div class="title">' + esc(ev.title) + '</div>' +
       '<div class="meta"><span class="chip ' + t.cls + '">' + t.name + '</span>' + weeklyChip +
       '<span>' + esc(summary) + '</span>' + badge +
-      (ev.note ? '<span>· ' + esc(ev.note) + '</span>' : '') + '</div>' + actions + '</div>' +
+      (ev.note ? '<span>· ' + esc(ev.note) + '</span>' : '') + '</div>' + actions + files + '</div>' +
       delBtn("ev", ev.id) + '</div>';
   }
 
@@ -1068,13 +1251,14 @@
     }
   }
 
-  function renderAll() { renderSummary(); renderMoney(); renderToday(); renderExpenses(); renderEvents(); }
+  function renderAll() { renderSummary(); renderMoney(); renderSavings(); renderToday(); renderExpenses(); renderEvents(); }
 
   // ---------- delete ----------
   document.addEventListener("click", function (e) {
     var btn = e.target.closest(".del"); if (!btn) return;
     var kind = btn.dataset.kind, id = btn.dataset.id;
     if (kind === "exp") data.expenses = data.expenses.filter(function (x) { return x.id !== id; });
+    else if (kind === "sav") data.savings = (data.savings || []).filter(function (x) { return x.id !== id; });
     else data.events = data.events.filter(function (x) { return x.id !== id; });
     save(); renderAll(); toast("Eliminado");
   });
@@ -1109,8 +1293,8 @@
     if (v && v.trim()) { data.name = v.trim(); save(); $("greet").textContent = "Hola, " + data.name; toast("Listo"); }
   });
   $("wipeBtn").addEventListener("click", function () {
-    if (!confirm("¿Seguro que querés borrar TODOS los gastos y eventos? No se puede deshacer.")) return;
-    data.expenses = []; data.events = []; save(); renderAll(); toast("Todo borrado");
+    if (!confirm("¿Seguro que querés borrar TODOS los gastos, ahorros y eventos? No se puede deshacer.")) return;
+    data.expenses = []; data.events = []; data.savings = []; save(); renderAll(); toast("Todo borrado");
   });
 
   // ---------- sincronización (Firebase) ----------
@@ -1140,7 +1324,7 @@
 
   function pushCloud() {
     if (!docRef) return;
-    try { docRef.set({ name: data.name, budget: +data.budget || 0, expenses: data.expenses, events: data.events, _ts: Date.now() }); } catch (e) {}
+    try { docRef.set({ name: data.name, budget: +data.budget || 0, expenses: data.expenses, events: data.events, savings: data.savings || [], _ts: Date.now() }); } catch (e) {}
   }
 
   function afterRemote() {
