@@ -141,6 +141,24 @@
   .mini:hover { border-color: var(--accent); color: var(--accent-ink); }
   .mini:active { transform: translateY(1px); }
 
+  /* ---------- Filtro de eventos + compartir ---------- */
+  .ev-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  .ev-filter { display: flex; gap: 7px; flex-wrap: wrap; flex: 1; min-width: 0; }
+  .fbtn {
+    font-family: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+    border-radius: 999px; padding: 7px 13px; transition: .15s; white-space: nowrap;
+  }
+  .fbtn:hover { border-color: var(--border-strong); color: var(--text); }
+  .fbtn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .btn-share {
+    font-family: inherit; font-size: .8rem; font-weight: 650; cursor: pointer; flex: none;
+    border: 0; background: var(--train); color: #fff; border-radius: 999px; padding: 8px 14px;
+    transition: .15s; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .btn-share:hover { filter: brightness(1.06); }
+  .btn-share:active { transform: translateY(1px); }
+
   /* ---------- Segmented (una vez / cada semana) ---------- */
   .seg { display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--border); padding: 3px; border-radius: 10px; }
   .seg-btn {
@@ -593,6 +611,17 @@
         <button class="btn" type="submit">Guardar evento</button>
       </form>
     </div>
+
+    <div class="ev-toolbar">
+      <div class="ev-filter" id="evFilter">
+        <button type="button" class="fbtn active" data-f="all">Todos</button>
+        <button type="button" class="fbtn" data-f="med">🩺 Médicos</button>
+        <button type="button" class="fbtn" data-f="train">🏋️ Entrenamiento</button>
+        <button type="button" class="fbtn" data-f="other">📌 Otros</button>
+      </div>
+      <button type="button" class="btn-share" id="shareAll">📤 Compartir</button>
+    </div>
+
     <div id="evList"></div>
   </section>
 
@@ -1151,12 +1180,30 @@
     var file = ev.files[+f.dataset.file]; if (file) openLightbox(file.dataUrl);
   });
 
+  var evFilter = "all";
+  function eventsFiltered() {
+    return data.events.filter(function (ev) { return evFilter === "all" || ev.type === evFilter; });
+  }
+
+  $("evFilter").addEventListener("click", function (e) {
+    var b = e.target.closest(".fbtn"); if (!b) return;
+    evFilter = b.dataset.f;
+    document.querySelectorAll("#evFilter .fbtn").forEach(function (x) { x.classList.toggle("active", x === b); });
+    renderEvents();
+  });
+
   function renderEvents() {
     var box = $("evList");
     if (!data.events.length) { box.innerHTML = emptyBox("📅", "No tenés eventos agendados"); return; }
+    var list = eventsFiltered();
+    if (!list.length) {
+      var tn = (TYPE[evFilter] || TYPE.other).name;
+      box.innerHTML = emptyBox("🔍", "No tenés eventos de tipo “" + tn + "”");
+      return;
+    }
     var now = new Date();
     var upcoming = [], past = [];
-    data.events.forEach(function (ev) {
+    list.forEach(function (ev) {
       var occ = eventNextOcc(ev, now);
       if (occ) upcoming.push({ ev: ev, occ: occ }); else past.push({ ev: ev });
     });
@@ -1187,10 +1234,12 @@
       badge = '<span class="chip past">Pasado</span>';
     }
     var weeklyChip = weekly ? '<span class="chip cat">🔁 Cada semana</span>' : '';
-    var actions = isPast ? '' :
+    var actions =
       '<div class="ev-actions">' +
-        '<button class="mini" data-cal="i" data-id="' + ev.id + '">📅 Agendar con avisos</button>' +
-        '<button class="mini" data-cal="g" data-id="' + ev.id + '">Abrir en Google</button>' +
+        (isPast ? '' :
+          '<button class="mini" data-cal="i" data-id="' + ev.id + '">📅 Agendar con avisos</button>' +
+          '<button class="mini" data-cal="g" data-id="' + ev.id + '">Abrir en Google</button>') +
+        '<button class="mini" data-share="' + ev.id + '">📤 Compartir</button>' +
       '</div>';
     var files = (ev.files && ev.files.length) ? '<div class="ev-files">' + ev.files.map(function (f, i) {
       return '<div class="ev-file" data-file="' + i + '" data-evid="' + ev.id + '"><img src="' + f.dataUrl + '" alt="adjunto"></div>';
@@ -1309,6 +1358,49 @@
       a.click(); URL.revokeObjectURL(url);
       toast("Abrí el archivo para agregarlo al calendario");
     }
+  });
+
+  // ---------- compartir (WhatsApp / menú del celular) ----------
+  // Texto lindo de un evento para mandar por chat.
+  function eventShareText(ev) {
+    var t = TYPE[ev.type] || TYPE.other;
+    var occ = eventNextOcc(ev, new Date());
+    var lines = [t.icon + " " + ev.title + "  (" + t.name + ")"];
+    lines.push((isWeeklyEvent(ev) ? "🔁 " : "🗓️ ") + scheduleSummary(ev));
+    if (occ) lines.push("⏰ Próximo: " + occLabel(occ));
+    if (ev.note) lines.push("📍 " + ev.note);
+    return lines.join("\n");
+  }
+
+  // Usa el menú de compartir del celular (WhatsApp, Telegram, etc.).
+  // En la PC, si no hay menú nativo, abre WhatsApp directo.
+  function shareText(title, body) {
+    if (navigator.share) {
+      navigator.share({ title: title, text: body }).catch(function () {});
+    } else {
+      window.open("https://wa.me/?text=" + encodeURIComponent(body), "_blank");
+    }
+  }
+
+  // Compartir un solo evento.
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-share]"); if (!b) return;
+    var ev = findEvent(b.dataset.share); if (!ev) return;
+    shareText(ev.title, eventShareText(ev));
+  });
+
+  // Compartir toda la agenda (respeta el filtro elegido).
+  $("shareAll").addEventListener("click", function () {
+    var now = new Date();
+    var list = eventsFiltered()
+      .map(function (ev) { return { ev: ev, occ: eventNextOcc(ev, now) }; })
+      .filter(function (u) { return u.occ; })
+      .sort(function (a, b) { return a.occ - b.occ; });
+    if (!list.length) { toast("No hay eventos próximos para compartir"); return; }
+    var header = "🗓️ Mis próximos eventos" +
+      (evFilter !== "all" ? " · " + (TYPE[evFilter] || TYPE.other).name : "");
+    var body = header + "\n\n" + list.map(function (u) { return eventShareText(u.ev); }).join("\n\n");
+    shareText("Mis eventos", body);
   });
 
   // ---------- summary ----------
