@@ -4,6 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#8c5e3c">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Mi Panel">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -865,6 +871,14 @@
 
   renderAll();
 
+  // Service worker: permite usar la app sin internet y que quede como app instalada.
+  // Solo corre en el sitio publicado (https); en la vista previa no pasa nada.
+  if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("./sw.js").catch(function () {});
+    });
+  }
+
   function todayISO() {
     var t = new Date();
     return t.getFullYear() + "-" + String(t.getMonth()+1).padStart(2,"0") + "-" + String(t.getDate()).padStart(2,"0");
@@ -1553,9 +1567,20 @@
     if (msg) $("syncStatus").textContent = msg;
   }
 
+  function warnSyncFail(e) {
+    var msg = (e && e.message) ? e.message : "";
+    if (/1048576|maximum|size|exceed|too large|longer than|bytes/i.test(msg))
+      toast("⚠️ No se sincronizó: hay demasiadas fotos. Quitá alguna.");
+    else
+      toast("⚠️ No se pudo sincronizar en la nube");
+  }
+
   function pushCloud() {
     if (!docRef) return;
-    try { docRef.set({ name: data.name, budget: +data.budget || 0, expenses: data.expenses, events: data.events, savings: data.savings || [], fixed: data.fixed || [], _ts: Date.now() }); } catch (e) {}
+    var payload = { name: data.name, budget: +data.budget || 0, expenses: data.expenses, events: data.events, savings: data.savings || [], fixed: data.fixed || [], _ts: Date.now() };
+    var p;
+    try { p = docRef.set(payload); } catch (e) { warnSyncFail(e); return; }
+    if (p && p.catch) p.catch(warnSyncFail);
   }
 
   function afterRemote() {
