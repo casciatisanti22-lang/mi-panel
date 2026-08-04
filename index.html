@@ -564,6 +564,10 @@
           <button type="button" class="seg-btn active" data-kind="out">💸 Gasto</button>
           <button type="button" class="seg-btn" data-kind="in">💰 Ingreso</button>
         </div>
+        <div class="seg" id="expPay">
+          <button type="button" class="seg-btn active" data-pay="card">💳 Tarjeta</button>
+          <button type="button" class="seg-btn" data-pay="cash">💵 Efectivo</button>
+        </div>
         <div class="row">
           <div class="field">
             <label class="f" for="expAmount">Monto</label>
@@ -637,6 +641,21 @@
       </div></div>
     </div>
 
+    <div class="card collapsible" id="cardCard">
+      <button type="button" class="card-toggle"><span>💳 Tarjeta de crédito</span><span class="ct-right"><span class="card-sum" id="cardSum"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>
+      <div class="card-body"><div class="card-body-inner">
+        <div class="money-row">
+          <div class="money-stat"><div class="ms-lbl">A pagar</div><div class="ms-val out num" id="cardDue">$0</div></div>
+          <div class="money-stat"><div class="ms-lbl">En curso</div><div class="ms-val num" id="cardCurrent">$0</div></div>
+        </div>
+        <p class="note" id="cardInfo" style="margin-top:11px"></p>
+        <div class="data-actions" style="margin-top:11px">
+          <button class="btn sm" id="cardPay" type="button">✓ Marcar como pagada</button>
+          <button class="btn sm ghost" id="cardCloseSet" type="button">✎ Día de cierre</button>
+        </div>
+      </div></div>
+    </div>
+
     <div class="card collapsible" id="savingsCard">
       <button type="button" class="card-toggle"><span>💵 Ahorros en dólares</span><span class="ct-right"><span class="card-sum" id="savSum"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>
       <div class="card-body"><div class="card-body-inner">
@@ -663,6 +682,7 @@
         <input id="savNote" type="text" placeholder="Nota (opcional)" style="flex:1;min-width:120px" />
         <button class="btn sm" type="submit">Guardar</button>
       </form>
+      <button class="btn sm ghost" id="cambioBtn" type="button" style="margin-top:10px">💱 Cambié dólares a pesos</button>
       <div class="save-list" id="savList"></div>
       </div></div>
     </div>
@@ -807,6 +827,10 @@
       <button type="button" class="seg-btn active" data-kind="out">💸 Gasto</button>
       <button type="button" class="seg-btn" data-kind="in">💰 Ingreso</button>
     </div>
+    <div class="seg" id="qaPay">
+      <button type="button" class="seg-btn active" data-pay="card">💳 Tarjeta</button>
+      <button type="button" class="seg-btn" data-pay="cash">💵 Efectivo</button>
+    </div>
     <input id="qaAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0" />
     <div class="qa-quick" id="qaQuick">
       <button type="button" data-add="500">+500</button>
@@ -864,13 +888,13 @@
       var d = JSON.parse(localStorage.getItem(KEY));
       if (d && typeof d === "object") return normalize(d);
     } catch (e) {}
-    return { name: "", budget: 0, savingsGoal: 0, expenses: [], events: [], savings: [], fixed: [], templates: [] };
+    return { name: "", budget: 0, savingsGoal: 0, cardCloseDay: 25, cardPaidUntil: "", expenses: [], events: [], savings: [], fixed: [], templates: [] };
   }
 
   // Normaliza datos y migra eventos viejos (fecha/hora) al nuevo formato con "slots".
   function normalize(d) {
     d = d || {};
-    var out = { name: d.name || "", budget: +d.budget || 0, savingsGoal: +d.savingsGoal || 0, expenses: [], events: [], savings: [], fixed: [], templates: [] };
+    var out = { name: d.name || "", budget: +d.budget || 0, savingsGoal: +d.savingsGoal || 0, cardCloseDay: +d.cardCloseDay || 25, cardPaidUntil: d.cardPaidUntil || "", expenses: [], events: [], savings: [], fixed: [], templates: [] };
     if (Array.isArray(d.expenses)) out.expenses = d.expenses;
     if (Array.isArray(d.savings)) out.savings = d.savings;
     if (Array.isArray(d.fixed)) out.fixed = d.fixed;
@@ -987,7 +1011,7 @@
     other: { name: "Otro", cls: "other", icon: "📌" }
   };
   var CAT_ICON = { Comida:"🍽️", Transporte:"🚌", Salud:"💊", Hogar:"🏠", Ocio:"🎬", Servicios:"💡", Otros:"🧾",
-    Sueldo:"💼", Venta:"🏷️", Regalo:"🎁" };
+    Sueldo:"💼", Venta:"🏷️", Regalo:"🎁", Cambio:"💱" };
   var expSearch = "";
 
   // ---------- refs ----------
@@ -1055,7 +1079,7 @@
 
   // ---------- dinero: gastos e ingresos ----------
   var CATS_OUT = ["Comida","Transporte","Salud","Hogar","Ocio","Servicios","Otros"];
-  var CATS_IN = ["Sueldo","Venta","Regalo","Otros"];
+  var CATS_IN = ["Sueldo","Venta","Regalo","Cambio","Otros"];
   var expKind = "out";
 
   function fillCats() {
@@ -1064,11 +1088,20 @@
   }
   fillCats();
 
+  var expPay = "card";
+  function updateExpPayUI() {
+    $("expPay").style.display = expKind === "in" ? "none" : "";
+    document.querySelectorAll("#expPay .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.pay === expPay); });
+  }
+  $("expPay").addEventListener("click", function (e) {
+    var b = e.target.closest(".seg-btn"); if (!b) return;
+    expPay = b.dataset.pay; updateExpPayUI();
+  });
   $("expKind").addEventListener("click", function (e) {
     var b = e.target.closest(".seg-btn"); if (!b) return;
     expKind = b.dataset.kind;
     document.querySelectorAll("#expKind .seg-btn").forEach(function (x) { x.classList.toggle("active", x === b); });
-    fillCats();
+    fillCats(); updateExpPayUI();
   });
 
   var editingExpId = null;
@@ -1076,13 +1109,14 @@
   function setExpKind(k) {
     expKind = k;
     document.querySelectorAll("#expKind .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.kind === k); });
-    fillCats();
+    fillCats(); updateExpPayUI();
   }
   function resetExpForm() {
     editingExpId = null;
     $("expFormTitle").textContent = "Agregar movimiento";
     $("expSubmit").textContent = "Guardar";
     $("expCancel").hidden = true;
+    expPay = "card";
     setExpKind("out");
     $("expAmount").value = ""; $("expNote").value = ""; setDefaultDates();
   }
@@ -1095,14 +1129,14 @@
     if (isNaN(amt) || amt <= 0) { $("expAmount").focus(); return; }
     if (editingExpId) {
       var it = data.expenses.filter(function (x) { return x.id === editingExpId; })[0];
-      if (it) { it.kind = expKind; it.amount = amt; it.cat = $("expCat").value; it.date = $("expDate").value; it.note = $("expNote").value.trim(); }
+      if (it) { it.kind = expKind; it.amount = amt; it.cat = $("expCat").value; it.date = $("expDate").value; it.note = $("expNote").value.trim(); it.pay = expKind === "in" ? "cash" : expPay; }
       resetExpForm();
       save(); renderAll();
       toast("✏️ Movimiento actualizado");
       return;
     }
     viewMonth = curYM(); // al cargar algo nuevo, volvemos al mes actual para verlo
-    data.expenses.push({ id: uid(), kind: expKind, amount: amt, cat: $("expCat").value, date: $("expDate").value, note: $("expNote").value.trim() });
+    data.expenses.push({ id: uid(), kind: expKind, amount: amt, cat: $("expCat").value, date: $("expDate").value, note: $("expNote").value.trim(), pay: expKind === "in" ? "cash" : expPay });
     save();
     $("expAmount").value = ""; $("expNote").value = "";
     renderAll();
@@ -1112,6 +1146,7 @@
   function editExpense(id) {
     var x = data.expenses.filter(function (e) { return e.id === id; })[0]; if (!x) return;
     editingExpId = id;
+    expPay = x.pay === "cash" ? "cash" : "card";
     setExpKind(x.kind === "in" ? "in" : "out");
     $("expCat").value = x.cat;
     $("expAmount").value = x.amount;
@@ -1150,7 +1185,7 @@
       html += '<div class="item">' +
         '<div class="lead" style="background:var(--surface-2)">' + (inc ? (CAT_ICON[x.cat] || "💰") : (CAT_ICON[x.cat] || "🧾")) + '</div>' +
         '<div class="body"><div class="title">' + (esc(x.note) || x.cat) + '</div>' +
-        '<div class="meta"><span class="chip cat">' + (inc ? "Ingreso · " : "") + x.cat + '</span><span>' + fmtDate(x.date) + '</span></div></div>' +
+        '<div class="meta"><span class="chip cat">' + (inc ? "Ingreso · " : "") + x.cat + '</span><span>' + fmtDate(x.date) + '</span>' + (!inc && x.pay === "card" ? '<span title="Tarjeta">💳</span>' : '') + '</div></div>' +
         '<div class="amount num' + (inc ? ' in' : '') + '">' + (inc ? "+" : "−") + fmt(x.amount) + '</div>' +
         editBtn("exp", x.id) + delBtn("exp", x.id) + '</div>';
     });
@@ -1273,6 +1308,73 @@
   }
   $("savGoalSet").addEventListener("click", setSavingsGoal);
   $("savGoalEdit").addEventListener("click", setSavingsGoal);
+
+  // ---------- cambio de dólares ----------
+  $("cambioBtn").addEventListener("click", function () {
+    var vu = prompt("¿Cuántos DÓLARES cambiaste? (salen de tus ahorros)");
+    if (vu === null) return;
+    var usdAmt = parseFloat(vu);
+    if (isNaN(usdAmt) || usdAmt <= 0) { toast("Poné los dólares que cambiaste"); return; }
+    var vp = prompt("¿Cuántos PESOS recibiste por esos US$ " + usdAmt + "?");
+    if (vp === null) return;
+    var pesos = parseFloat(vp);
+    if (isNaN(pesos) || pesos <= 0) { toast("Poné los pesos que recibiste"); return; }
+    data.savings = data.savings || [];
+    data.savings.push({ id: uid(), kind: "out", amount: usdAmt, date: todayISO(), note: "Cambio a pesos" });
+    data.expenses.push({ id: uid(), kind: "in", amount: pesos, cat: "Cambio", date: todayISO(), note: "Cambié US$ " + usdAmt, pay: "cash" });
+    viewMonth = curYM();
+    save(); renderAll();
+    toast("💱 Cambio registrado");
+  });
+
+  // ---------- tarjeta de crédito ----------
+  function isoOf(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+  function cardCloseDay() { return Math.min(28, Math.max(1, +data.cardCloseDay || 25)); }
+  function lastCardClose() {
+    var now = new Date(), day = cardCloseDay();
+    if (now.getDate() > day) return new Date(now.getFullYear(), now.getMonth(), day);
+    return new Date(now.getFullYear(), now.getMonth() - 1, day);
+  }
+  function nextCardClose() { var lc = lastCardClose(); return new Date(lc.getFullYear(), lc.getMonth() + 1, lc.getDate()); }
+  function computeCard() {
+    var lastISO = isoOf(lastCardClose());
+    var paid = data.cardPaidUntil || "0000-00-00";
+    var due = 0, current = 0;
+    data.expenses.forEach(function (x) {
+      if (x.kind === "in" || x.pay !== "card") return;
+      var d = x.date || "";
+      if (d > lastISO) current += x.amount;
+      else if (d > paid) due += x.amount;
+    });
+    return { due: due, current: current };
+  }
+  function renderCard() {
+    var c = computeCard();
+    $("cardDue").textContent = fmt(c.due);
+    $("cardCurrent").textContent = fmt(c.current);
+    var nc = nextCardClose();
+    $("cardInfo").innerHTML = "Cierra el día <b>" + cardCloseDay() + "</b> (próximo: " + nc.getDate() + " " + MONTHS[nc.getMonth()] + "). " +
+      (c.due > 0 ? "Tenés <b>" + fmt(c.due) + "</b> por pagar." : "No tenés nada por pagar 🎉");
+    var cs = $("cardSum"); if (cs) cs.textContent = c.due > 0 ? "A pagar " + fmt(c.due) : (c.current > 0 ? "En curso " + fmt(c.current) : "");
+    $("cardPay").disabled = c.due <= 0;
+    $("cardPay").style.opacity = c.due <= 0 ? ".5" : "";
+  }
+  $("cardPay").addEventListener("click", function () {
+    var c = computeCard();
+    if (c.due <= 0) return;
+    if (!confirm("¿Marcar la tarjeta como pagada? (" + fmt(c.due) + ")")) return;
+    data.cardPaidUntil = isoOf(lastCardClose());
+    save(); renderCard(); renderMoney();
+    toast("💳 Tarjeta pagada");
+  });
+  $("cardCloseSet").addEventListener("click", function () {
+    var v = prompt("¿Qué día cierra tu tarjeta? (1 a 28)", cardCloseDay());
+    if (v === null) return;
+    var n = parseInt(v, 10);
+    if (isNaN(n) || n < 1 || n > 28) { toast("Poné un día entre 1 y 28"); return; }
+    data.cardCloseDay = n; save(); renderCard();
+    toast("Cierre: día " + n);
+  });
 
   function renderSavings() {
     var tot = savingsTotal();
@@ -1849,7 +1951,7 @@
     }
   });
 
-  function renderAll() { if (!viewMonth) viewMonth = curYM(); renderSummary(); renderMoney(); renderFixed(); renderSavings(); renderToday(); renderExpenses(); renderEvents(); }
+  function renderAll() { if (!viewMonth) viewMonth = curYM(); renderSummary(); renderMoney(); renderCard(); renderFixed(); renderSavings(); renderToday(); renderExpenses(); renderEvents(); }
 
   // ---------- delete ----------
   document.addEventListener("click", function (e) {
@@ -1945,7 +2047,7 @@
 
   function pushCloud() {
     if (!docRef) return;
-    var payload = { name: data.name, budget: +data.budget || 0, savingsGoal: +data.savingsGoal || 0, expenses: data.expenses, events: data.events, savings: data.savings || [], fixed: data.fixed || [], templates: data.templates || [], _ts: Date.now() };
+    var payload = { name: data.name, budget: +data.budget || 0, savingsGoal: +data.savingsGoal || 0, cardCloseDay: +data.cardCloseDay || 25, cardPaidUntil: data.cardPaidUntil || "", expenses: data.expenses, events: data.events, savings: data.savings || [], fixed: data.fixed || [], templates: data.templates || [], _ts: Date.now() };
     var p;
     try { p = docRef.set(payload); } catch (e) { warnSyncFail(e); return; }
     if (p && p.catch) p.catch(warnSyncFail);
@@ -2049,7 +2151,11 @@
 
   // ---------- carga rápida (botón flotante ＋) ----------
   var LASTCAT_KEY = "miPanel_lastCat";
-  var qaKind = "out", qaCat = null;
+  var qaKind = "out", qaCat = null, qaPay = "card";
+  function qaSetPay(p) {
+    qaPay = p;
+    document.querySelectorAll("#qaPay .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.pay === p); });
+  }
   function qaLastCat() { try { return localStorage.getItem(LASTCAT_KEY); } catch (e) { return null; } }
 
   function qaRenderCats() {
@@ -2063,6 +2169,7 @@
   function openQa() {
     qaKind = "out"; qaCat = null;
     document.querySelectorAll("#qaKind .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.kind === "out"); });
+    $("qaPay").style.display = ""; qaSetPay("card");
     $("qaAmount").value = ""; $("qaNote").value = "";
     qaRenderCats();
     renderTemplates();
@@ -2111,7 +2218,12 @@
     var b = e.target.closest(".seg-btn"); if (!b) return;
     qaKind = b.dataset.kind;
     document.querySelectorAll("#qaKind .seg-btn").forEach(function (x) { x.classList.toggle("active", x === b); });
+    $("qaPay").style.display = qaKind === "in" ? "none" : "";
     qaRenderCats();
+  });
+  $("qaPay").addEventListener("click", function (e) {
+    var b = e.target.closest(".seg-btn"); if (!b) return;
+    qaSetPay(b.dataset.pay);
   });
   $("qaQuick").addEventListener("click", function (e) {
     var b = e.target.closest("button"); if (!b) return;
@@ -2128,7 +2240,7 @@
     var amt = parseFloat($("qaAmount").value);
     if (isNaN(amt) || amt <= 0) { $("qaAmount").focus(); return; }
     viewMonth = curYM();
-    data.expenses.push({ id: uid(), kind: qaKind, amount: amt, cat: qaCat, date: todayISO(), note: $("qaNote").value.trim() });
+    data.expenses.push({ id: uid(), kind: qaKind, amount: amt, cat: qaCat, date: todayISO(), note: $("qaNote").value.trim(), pay: qaKind === "in" ? "cash" : qaPay });
     try { localStorage.setItem(LASTCAT_KEY, qaCat); } catch (e) {}
     save(); renderAll(); closeQa();
     toast(qaKind === "in" ? "💰 Ingreso guardado" : "💸 Gasto guardado");
