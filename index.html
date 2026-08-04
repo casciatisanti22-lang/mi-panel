@@ -564,6 +564,10 @@
           <button type="button" class="seg-btn active" data-kind="out">💸 Gasto</button>
           <button type="button" class="seg-btn" data-kind="in">💰 Ingreso</button>
         </div>
+        <div class="seg" id="expCurr">
+          <button type="button" class="seg-btn active" data-curr="ARS">💵 Pesos</button>
+          <button type="button" class="seg-btn" data-curr="USD">💲 Dólares</button>
+        </div>
         <div class="seg" id="expPay">
           <button type="button" class="seg-btn active" data-pay="card">💳 Tarjeta</button>
           <button type="button" class="seg-btn" data-pay="cash">💵 Efectivo</button>
@@ -576,6 +580,16 @@
           <div class="field">
             <label class="f" for="expCat">Categoría</label>
             <select id="expCat"></select>
+          </div>
+        </div>
+        <div class="row" id="cuotaRow" hidden>
+          <div class="field">
+            <label class="f" for="expCuotas">Cuotas</label>
+            <input id="expCuotas" type="number" min="1" step="1" value="1" inputmode="numeric" />
+          </div>
+          <div class="field">
+            <label class="f">Cómo queda</label>
+            <div class="note" id="cuotaHint" style="padding:9px 11px">1 pago</div>
           </div>
         </div>
         <div class="row">
@@ -622,6 +636,11 @@
         <div class="money-stat"><div class="ms-lbl">Gastos</div><div class="ms-val out num" id="mOut">$0</div></div>
         <div class="money-stat"><div class="ms-lbl">Balance</div><div class="ms-val num" id="mBal">$0</div></div>
       </div>
+      <div class="money-row" id="usdRow" hidden style="margin-top:10px">
+        <div class="money-stat"><div class="ms-lbl">Ingresos US$</div><div class="ms-val in num" id="mInU">US$ 0</div></div>
+        <div class="money-stat"><div class="ms-lbl">Gastos US$</div><div class="ms-val out num" id="mOutU">US$ 0</div></div>
+        <div class="money-stat"><div class="ms-lbl">Balance US$</div><div class="ms-val num" id="mBalU">US$ 0</div></div>
+      </div>
 
       <div class="budget" id="budgetBox">
         <div class="budget-head">
@@ -656,12 +675,23 @@
       </div></div>
     </div>
 
+    <div class="card collapsible" id="cuotasCard" hidden>
+      <button type="button" class="card-toggle"><span>🧾 Mis cuotas</span><span class="ct-right"><span class="card-sum" id="cuotasSum"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>
+      <div class="card-body"><div class="card-body-inner">
+        <div id="cuotasList" class="fixed-list"></div>
+      </div></div>
+    </div>
+
     <div class="card collapsible" id="savingsCard">
       <button type="button" class="card-toggle"><span>💵 Ahorros en dólares</span><span class="ct-right"><span class="card-sum" id="savSum"></span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></button>
       <div class="card-body"><div class="card-body-inner">
       <div class="savings-total">
         <span class="big num" id="savTotal">US$ 0</span>
         <span class="cur">USD</span>
+      </div>
+      <div class="budget-info" id="savPesosRow" style="margin-top:-8px;margin-bottom:10px">
+        <span id="savInPesos" class="num"></span>
+        <button class="mini" id="rateSet" type="button">💱 Cotización</button>
       </div>
       <div class="sav-goal">
         <div class="budget-head">
@@ -818,6 +848,10 @@
       <button type="button" class="seg-btn active" data-pay="card">💳 Tarjeta</button>
       <button type="button" class="seg-btn" data-pay="cash">💵 Efectivo</button>
     </div>
+    <div class="seg" id="qaCurr">
+      <button type="button" class="seg-btn active" data-curr="ARS">💵 Pesos</button>
+      <button type="button" class="seg-btn" data-curr="USD">💲 Dólares</button>
+    </div>
     <input id="qaAmount" type="number" inputmode="decimal" step="0.01" min="0" placeholder="0" />
     <div class="qa-quick" id="qaQuick">
       <button type="button" data-add="500">+500</button>
@@ -872,13 +906,13 @@
       var d = JSON.parse(localStorage.getItem(KEY));
       if (d && typeof d === "object") return normalize(d);
     } catch (e) {}
-    return { name: "", budget: 0, savingsGoal: 0, cardCloseDay: 25, cardPaidUntil: "", expenses: [], events: [], savings: [], fixed: [], templates: [] };
+    return { name: "", budget: 0, savingsGoal: 0, usdRate: 0, cardCloseDay: 25, cardPaidUntil: "", expenses: [], events: [], savings: [], fixed: [], templates: [] };
   }
 
   // Normaliza datos y migra eventos viejos (fecha/hora) al nuevo formato con "slots".
   function normalize(d) {
     d = d || {};
-    var out = { name: d.name || "", budget: +d.budget || 0, savingsGoal: +d.savingsGoal || 0, cardCloseDay: +d.cardCloseDay || 25, cardPaidUntil: d.cardPaidUntil || "", expenses: [], events: [], savings: [], fixed: [], templates: [] };
+    var out = { name: d.name || "", budget: +d.budget || 0, savingsGoal: +d.savingsGoal || 0, usdRate: +d.usdRate || 0, cardCloseDay: +d.cardCloseDay || 25, cardPaidUntil: d.cardPaidUntil || "", expenses: [], events: [], savings: [], fixed: [], templates: [] };
     if (Array.isArray(d.expenses)) out.expenses = d.expenses;
     if (Array.isArray(d.savings)) out.savings = d.savings;
     if (Array.isArray(d.fixed)) out.fixed = d.fixed;
@@ -1073,10 +1107,33 @@
   fillCats();
 
   var expPay = "card";
+  var expCurr = "ARS";
   function updateExpPayUI() {
     $("expPay").style.display = expKind === "in" ? "none" : "";
     document.querySelectorAll("#expPay .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.pay === expPay); });
+    updateCuotaUI();
   }
+  function updateExpCurrUI() {
+    document.querySelectorAll("#expCurr .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.curr === expCurr); });
+  }
+  function updateCuotaUI() {
+    // Cuotas solo tienen sentido para un gasto con tarjeta
+    var show = expKind === "out" && expPay === "card" && !editingExpId;
+    $("cuotaRow").hidden = !show;
+    if (show) refreshCuotaHint();
+  }
+  function refreshCuotaHint() {
+    var n = Math.max(1, parseInt($("expCuotas").value, 10) || 1);
+    var amt = parseFloat($("expAmount").value) || 0;
+    var f = expCurr === "USD" ? usd : fmt;
+    $("cuotaHint").textContent = n <= 1 ? "1 pago" : (n + " cuotas de " + f(amt) + "  ·  total " + f(amt * n));
+  }
+  $("expCurr").addEventListener("click", function (e) {
+    var b = e.target.closest(".seg-btn"); if (!b) return;
+    expCurr = b.dataset.curr; updateExpCurrUI(); refreshCuotaHint();
+  });
+  $("expCuotas").addEventListener("input", refreshCuotaHint);
+  $("expAmount").addEventListener("input", function () { if (!$("cuotaRow").hidden) refreshCuotaHint(); });
   $("expPay").addEventListener("click", function (e) {
     var b = e.target.closest(".seg-btn"); if (!b) return;
     expPay = b.dataset.pay; updateExpPayUI();
@@ -1100,9 +1157,16 @@
     $("expFormTitle").textContent = "Agregar movimiento";
     $("expSubmit").textContent = "Guardar";
     $("expCancel").hidden = true;
-    expPay = "card";
-    setExpKind("out");
+    expPay = "card"; expCurr = "ARS"; $("expCuotas").value = "1";
+    setExpKind("out"); updateExpCurrUI();
     $("expAmount").value = ""; $("expNote").value = ""; setDefaultDates();
+  }
+  function addMonths(iso, k) {
+    var p = (iso || todayISO()).split("-");
+    var d = new Date(+p[0], (+p[1] - 1) + k, 1);
+    var last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(+p[2] || 1, last));
+    return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
   }
   $("expCancel").addEventListener("click", resetExpForm);
   $("expSearch").addEventListener("input", function () { expSearch = this.value; renderExpenses(); });
@@ -1113,16 +1177,29 @@
     if (isNaN(amt) || amt <= 0) { $("expAmount").focus(); return; }
     if (editingExpId) {
       var it = data.expenses.filter(function (x) { return x.id === editingExpId; })[0];
-      if (it) { it.kind = expKind; it.amount = amt; it.cat = $("expCat").value; it.date = $("expDate").value; it.note = $("expNote").value.trim(); it.pay = expKind === "in" ? "cash" : expPay; }
+      if (it) { it.kind = expKind; it.amount = amt; it.cat = $("expCat").value; it.date = $("expDate").value; it.note = $("expNote").value.trim(); it.pay = expKind === "in" ? "cash" : expPay; it.curr = expCurr; }
       resetExpForm();
       save(); renderAll();
       toast("✏️ Movimiento actualizado");
       return;
     }
     viewMonth = curYM(); // al cargar algo nuevo, volvemos al mes actual para verlo
-    data.expenses.push({ id: uid(), kind: expKind, amount: amt, cat: $("expCat").value, date: $("expDate").value, note: $("expNote").value.trim(), pay: expKind === "in" ? "cash" : expPay });
+    var cat = $("expCat").value, date = $("expDate").value, note = $("expNote").value.trim();
+    var pay = expKind === "in" ? "cash" : expPay;
+    var cuotas = (expKind === "out" && expPay === "card") ? Math.max(1, parseInt($("expCuotas").value, 10) || 1) : 1;
+    if (cuotas > 1) {
+      var grp = uid();
+      for (var i = 0; i < cuotas; i++) {
+        data.expenses.push({ id: uid(), kind: "out", amount: amt, cat: cat, date: addMonths(date, i),
+          note: note, pay: "card", curr: expCurr, grp: grp, ci: i + 1, cn: cuotas });
+      }
+      save(); resetExpForm(); renderAll();
+      toast("🧾 Compra en " + cuotas + " cuotas guardada");
+      return;
+    }
+    data.expenses.push({ id: uid(), kind: expKind, amount: amt, cat: cat, date: date, note: note, pay: pay, curr: expCurr });
     save();
-    $("expAmount").value = ""; $("expNote").value = "";
+    $("expAmount").value = ""; $("expNote").value = ""; $("expCuotas").value = "1"; refreshCuotaHint();
     renderAll();
     toast(expKind === "in" ? "💰 Ingreso guardado" : "💸 Gasto guardado");
   });
@@ -1131,7 +1208,9 @@
     var x = data.expenses.filter(function (e) { return e.id === id; })[0]; if (!x) return;
     editingExpId = id;
     expPay = x.pay === "cash" ? "cash" : "card";
+    expCurr = x.curr === "USD" ? "USD" : "ARS";
     setExpKind(x.kind === "in" ? "in" : "out");
+    updateExpCurrUI();
     $("expCat").value = x.cat;
     $("expAmount").value = x.amount;
     $("expDate").value = x.date;
@@ -1139,6 +1218,7 @@
     $("expFormTitle").textContent = "Editar movimiento";
     $("expSubmit").textContent = "Guardar cambios";
     $("expCancel").hidden = false;
+    updateCuotaUI(); // oculta cuotas al editar una sola
     try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e2) {}
     $("expAmount").focus();
   }
@@ -1166,11 +1246,14 @@
     var html = "";
     list.forEach(function (x) {
       var inc = isIncome(x);
+      var f = x.curr === "USD" ? usd : fmt;
+      var usdChip = x.curr === "USD" ? '<span title="Dólares">💲</span>' : '';
+      var cuotaChip = x.cn > 1 ? '<span class="chip cat">🧾 Cuota ' + x.ci + '/' + x.cn + '</span>' : '';
       html += '<div class="item">' +
         '<div class="lead" style="background:var(--surface-2)">' + (inc ? (CAT_ICON[x.cat] || "💰") : (CAT_ICON[x.cat] || "🧾")) + '</div>' +
         '<div class="body"><div class="title">' + (esc(x.note) || x.cat) + '</div>' +
-        '<div class="meta"><span class="chip cat">' + (inc ? "Ingreso · " : "") + x.cat + '</span><span>' + fmtDate(x.date) + '</span>' + (!inc && x.pay === "card" ? '<span title="Tarjeta">💳</span>' : '') + '</div></div>' +
-        '<div class="amount num' + (inc ? ' in' : '') + '">' + (inc ? "+" : "−") + fmt(x.amount) + '</div>' +
+        '<div class="meta"><span class="chip cat">' + (inc ? "Ingreso · " : "") + x.cat + '</span><span>' + fmtDate(x.date) + '</span>' + (!inc && x.pay === "card" ? '<span title="Tarjeta">💳</span>' : '') + usdChip + cuotaChip + '</div></div>' +
+        '<div class="amount num' + (inc ? ' in' : '') + '">' + (inc ? "+" : "−") + f(x.amount) + '</div>' +
         editBtn("exp", x.id) + delBtn("exp", x.id) + '</div>';
     });
     box.innerHTML = head + html;
@@ -1195,13 +1278,15 @@
 
   function monthTotals(ym) {
     ym = ym || curYM();
-    var inc = 0, out = 0, byCat = {};
+    var r = { inc: 0, out: 0, byCat: {}, incU: 0, outU: 0 };
     data.expenses.forEach(function (x) {
       if ((x.date || "").slice(0, 7) !== ym) return;
-      if (isIncome(x)) { inc += x.amount; }
-      else { out += x.amount; byCat[x.cat] = (byCat[x.cat] || 0) + x.amount; }
+      var isUsd = x.curr === "USD";
+      if (isIncome(x)) { if (isUsd) r.incU += x.amount; else r.inc += x.amount; }
+      else if (isUsd) { r.outU += x.amount; }
+      else { r.out += x.amount; r.byCat[x.cat] = (r.byCat[x.cat] || 0) + x.amount; }
     });
-    return { inc: inc, out: out, byCat: byCat };
+    return r;
   }
 
   function renderMoney() {
@@ -1214,6 +1299,18 @@
     mb.textContent = (bal < 0 ? "−" : "") + fmt(Math.abs(bal)).replace("-", "");
     mb.className = "ms-val num " + (bal < 0 ? "neg" : "pos");
     var msum = $("moneySum"); if (msum) msum.textContent = "Gastaste " + fmt(t.out);
+
+    // balance en dólares (solo si hubo movimientos USD ese mes)
+    var balU = t.incU - t.outU;
+    var hasU = t.incU > 0 || t.outU > 0;
+    $("usdRow").hidden = !hasU;
+    if (hasU) {
+      $("mInU").textContent = usd(t.incU);
+      $("mOutU").textContent = usd(t.outU);
+      var mbu = $("mBalU");
+      mbu.textContent = (balU < 0 ? "−" : "") + usd(Math.abs(balU));
+      mbu.className = "ms-val num " + (balU < 0 ? "neg" : "pos");
+    }
 
     // presupuesto
     var budget = +data.budget || 0;
@@ -1293,6 +1390,17 @@
   $("savGoalSet").addEventListener("click", setSavingsGoal);
   $("savGoalEdit").addEventListener("click", setSavingsGoal);
 
+  // ---------- cotización del dólar ----------
+  $("rateSet").addEventListener("click", function () {
+    var cur = +data.usdRate || 0;
+    var v = prompt("¿A cuánto está el dólar hoy? (pesos por US$ 1)", cur || "");
+    if (v === null) return;
+    var n = parseFloat(v);
+    data.usdRate = isNaN(n) || n < 0 ? 0 : n;
+    save(); renderSavings();
+    toast(data.usdRate ? "💱 Cotización guardada" : "Cotización quitada");
+  });
+
   // ---------- cambio de dólares ----------
   $("cambioBtn").addEventListener("click", function () {
     var vu = prompt("¿Cuántos DÓLARES cambiaste? (salen de tus ahorros)");
@@ -1322,23 +1430,26 @@
   function nextCardClose() { var lc = lastCardClose(); return new Date(lc.getFullYear(), lc.getMonth() + 1, lc.getDate()); }
   function computeCard() {
     var lastISO = isoOf(lastCardClose());
+    var nextISO = isoOf(nextCardClose());
     var paid = data.cardPaidUntil || "0000-00-00";
-    var due = 0, current = 0;
+    var due = 0, current = 0, futureCount = 0, futureSum = 0;
     data.expenses.forEach(function (x) {
-      if (x.kind === "in" || x.pay !== "card") return;
+      if (x.kind === "in" || x.pay !== "card" || x.curr === "USD") return; // la tarjeta se lleva en pesos
       var d = x.date || "";
-      if (d > lastISO) current += x.amount;
-      else if (d > paid) due += x.amount;
+      if (d > nextISO) { futureCount++; futureSum += x.amount; }   // cuotas de meses siguientes
+      else if (d > lastISO) current += x.amount;                    // este ciclo, aún abierto
+      else if (d > paid) due += x.amount;                           // ya cerró: a pagar
     });
-    return { due: due, current: current };
+    return { due: due, current: current, futureCount: futureCount, futureSum: futureSum };
   }
   function renderCard() {
     var c = computeCard();
     $("cardDue").textContent = fmt(c.due);
     $("cardCurrent").textContent = fmt(c.current);
     var nc = nextCardClose();
+    var futTxt = c.futureCount > 0 ? " Además, <b>" + c.futureCount + "</b> cuota(s) por " + fmt(c.futureSum) + " en meses siguientes." : "";
     $("cardInfo").innerHTML = "Cierra el día <b>" + cardCloseDay() + "</b> (próximo: " + nc.getDate() + " " + MONTHS[nc.getMonth()] + "). " +
-      (c.due > 0 ? "Tenés <b>" + fmt(c.due) + "</b> por pagar." : "No tenés nada por pagar 🎉");
+      (c.due > 0 ? "Tenés <b>" + fmt(c.due) + "</b> por pagar." : "No tenés nada por pagar 🎉") + futTxt;
     var cs = $("cardSum"); if (cs) cs.textContent = c.due > 0 ? "A pagar " + fmt(c.due) : (c.current > 0 ? "En curso " + fmt(c.current) : "");
     $("cardPay").disabled = c.due <= 0;
     $("cardPay").style.opacity = c.due <= 0 ? ".5" : "";
@@ -1360,6 +1471,52 @@
     toast("Cierre: día " + n);
   });
 
+  // ---------- cuotas activas ----------
+  function ymLabel(dateISO) {
+    var p = (dateISO || "").split("-");
+    return (MONTHS[+p[1] - 1] || "") + " " + p[0];
+  }
+  function installmentGroups() {
+    var groups = {};
+    data.expenses.forEach(function (x) {
+      if (!x.grp || !(x.cn > 1)) return;
+      (groups[x.grp] = groups[x.grp] || []).push(x);
+    });
+    var ym = curYM();
+    return Object.keys(groups).map(function (g) {
+      var arr = groups[g].sort(function (a, b) { return (a.ci || 0) - (b.ci || 0); });
+      var cn = arr[0].cn, per = arr[0].amount, curr = arr[0].curr;
+      var name = arr[0].note || arr[0].cat;
+      var passed = arr.filter(function (e) { return (e.date || "").slice(0, 7) < ym; }).length;
+      var remaining = cn - passed; // incluye la cuota de este mes
+      var next = arr.filter(function (e) { return (e.date || "").slice(0, 7) >= ym; })
+        .sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
+      return { grp: g, name: name, cn: cn, per: per, curr: curr,
+        currentCuota: Math.min(cn, passed + 1), passed: passed,
+        remaining: remaining, remainingAmt: remaining * per, next: next };
+    }).filter(function (gg) { return gg.remaining > 0; })
+      .sort(function (a, b) { return b.remainingAmt - a.remainingAmt; });
+  }
+  function renderCuotas() {
+    var groups = installmentGroups();
+    var card = $("cuotasCard");
+    if (!groups.length) { card.hidden = true; return; }
+    card.hidden = false;
+    var sum = $("cuotasSum"); if (sum) sum.textContent = groups.length + " activa(s)";
+    $("cuotasList").innerHTML = groups.map(function (g) {
+      var f = g.curr === "USD" ? usd : fmt;
+      var pct = Math.round(g.passed / g.cn * 100);
+      var nextTxt = g.next ? " · próxima " + ymLabel(g.next.date) : "";
+      return '<div class="fixed-item" style="display:block">' +
+        '<div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">' +
+          '<span class="fx-name">' + esc(g.name) + '</span>' +
+          '<span class="cat-amt">' + f(g.per) + '/mes</span></div>' +
+        '<div class="fx-meta">Cuota ' + g.currentCuota + '/' + g.cn + '  ·  faltan ' + g.remaining + ' (' + f(g.remainingAmt) + ')' + nextTxt + '</div>' +
+        '<div class="bar-track" style="margin-top:7px"><div class="bar-fill" style="width:' + pct + '%"></div></div>' +
+        '</div>';
+    }).join("");
+  }
+
   function renderSavings() {
     var tot = savingsTotal();
     var el = $("savTotal");
@@ -1367,6 +1524,9 @@
     el.className = "big num";
     el.style.color = tot < 0 ? "var(--med)" : "var(--train)";
     var ss = $("savSum"); if (ss) ss.textContent = usd(tot);
+    var rate = +data.usdRate || 0;
+    var sp = $("savInPesos");
+    if (sp) sp.textContent = rate > 0 ? "≈ " + fmt(tot * rate) + "  ·  dólar " + fmt(rate) : "Poné la cotización para verlo en pesos";
     var goal = +data.savingsGoal || 0;
     if (goal > 0) {
       $("savGoalSet").hidden = true; $("savGoalBar").hidden = false;
@@ -1857,7 +2017,10 @@
     var count = data.expenses.filter(function (x) { return (x.date || "").slice(0, 7) === (new Date().getFullYear() + "-" + pad(new Date().getMonth() + 1)); }).length;
     $("sumMonth").textContent = (bal < 0 ? "−" : "") + fmt(Math.abs(bal));
     $("sumMonth").className = "big num " + (bal < 0 ? "neg" : "");
-    $("sumCount").textContent = count ? ("Gastaste " + fmt(t.out) + (t.inc ? " · entró " + fmt(t.inc) : "")) : "Sin movimientos este mes";
+    var balU = t.incU - t.outU;
+    var sub = count ? ("Gastaste " + fmt(t.out) + (t.inc ? " · entró " + fmt(t.inc) : "")) : "Sin movimientos este mes";
+    if (t.incU || t.outU) sub += " · USD " + (balU < 0 ? "−" : "+") + usdFmt.format(Math.abs(balU));
+    $("sumCount").textContent = sub;
 
     var now = new Date();
     var up = data.events.map(function (ev) { return { ev: ev, occ: eventNextOcc(ev, now) }; })
@@ -1935,13 +2098,22 @@
     }
   });
 
-  function renderAll() { if (!viewMonth) viewMonth = curYM(); renderSummary(); renderMoney(); renderCard(); renderFixed(); renderSavings(); renderToday(); renderExpenses(); renderEvents(); }
+  function renderAll() { if (!viewMonth) viewMonth = curYM(); renderSummary(); renderMoney(); renderCard(); renderCuotas(); renderFixed(); renderSavings(); renderToday(); renderExpenses(); renderEvents(); }
 
   // ---------- delete ----------
   document.addEventListener("click", function (e) {
     var btn = e.target.closest(".del"); if (!btn || !btn.dataset.kind) return;
     var kind = btn.dataset.kind, id = btn.dataset.id;
-    if (kind === "exp") data.expenses = data.expenses.filter(function (x) { return x.id !== id; });
+    if (kind === "exp") {
+      var tg = data.expenses.filter(function (x) { return x.id === id; })[0];
+      if (tg && tg.grp && tg.cn > 1) {
+        var all = confirm("Es una compra en " + tg.cn + " cuotas.\n\nAceptar = borrar TODAS las cuotas.\nCancelar = borrar solo esta.");
+        if (all) data.expenses = data.expenses.filter(function (x) { return x.grp !== tg.grp; });
+        else data.expenses = data.expenses.filter(function (x) { return x.id !== id; });
+      } else {
+        data.expenses = data.expenses.filter(function (x) { return x.id !== id; });
+      }
+    }
     else if (kind === "sav") data.savings = (data.savings || []).filter(function (x) { return x.id !== id; });
     else data.events = data.events.filter(function (x) { return x.id !== id; });
     save(); renderAll(); toast("Eliminado");
@@ -1958,9 +2130,9 @@
     toast("Datos exportados");
   });
   $("exportCsvBtn").addEventListener("click", function () {
-    var rows = [["Fecha", "Tipo", "Categoria", "Monto", "Detalle"]];
+    var rows = [["Fecha", "Tipo", "Moneda", "Categoria", "Monto", "Pago", "Cuota", "Detalle"]];
     data.expenses.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).forEach(function (x) {
-      rows.push([x.date, x.kind === "in" ? "Ingreso" : "Gasto", x.cat, x.amount, x.note || ""]);
+      rows.push([x.date, x.kind === "in" ? "Ingreso" : "Gasto", x.curr === "USD" ? "USD" : "ARS", x.cat, x.amount, x.pay === "card" ? "Tarjeta" : "Efectivo", x.cn > 1 ? (x.ci + "/" + x.cn) : "", x.note || ""]);
     });
     var csv = rows.map(function (r) {
       return r.map(function (c) { var s = String(c == null ? "" : c); return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(";");
@@ -2099,11 +2271,19 @@
 
   // ---------- carga rápida (botón flotante ＋) ----------
   var LASTCAT_KEY = "miPanel_lastCat";
-  var qaKind = "out", qaCat = null, qaPay = "card";
+  var qaKind = "out", qaCat = null, qaPay = "card", qaCurr = "ARS";
   function qaSetPay(p) {
     qaPay = p;
     document.querySelectorAll("#qaPay .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.pay === p); });
   }
+  function qaSetCurr(c) {
+    qaCurr = c;
+    document.querySelectorAll("#qaCurr .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.curr === c); });
+  }
+  $("qaCurr").addEventListener("click", function (e) {
+    var b = e.target.closest(".seg-btn"); if (!b) return;
+    qaSetCurr(b.dataset.curr);
+  });
   function qaLastCat() { try { return localStorage.getItem(LASTCAT_KEY); } catch (e) { return null; } }
 
   function qaRenderCats() {
@@ -2117,7 +2297,7 @@
   function openQa() {
     qaKind = "out"; qaCat = null;
     document.querySelectorAll("#qaKind .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.kind === "out"); });
-    $("qaPay").style.display = ""; qaSetPay("card");
+    $("qaPay").style.display = ""; qaSetPay("card"); qaSetCurr("ARS");
     $("qaAmount").value = ""; $("qaNote").value = "";
     qaRenderCats();
     renderTemplates();
@@ -2188,7 +2368,7 @@
     var amt = parseFloat($("qaAmount").value);
     if (isNaN(amt) || amt <= 0) { $("qaAmount").focus(); return; }
     viewMonth = curYM();
-    data.expenses.push({ id: uid(), kind: qaKind, amount: amt, cat: qaCat, date: todayISO(), note: $("qaNote").value.trim(), pay: qaKind === "in" ? "cash" : qaPay });
+    data.expenses.push({ id: uid(), kind: qaKind, amount: amt, cat: qaCat, date: todayISO(), note: $("qaNote").value.trim(), pay: qaKind === "in" ? "cash" : qaPay, curr: qaCurr });
     try { localStorage.setItem(LASTCAT_KEY, qaCat); } catch (e) {}
     save(); renderAll(); closeQa();
     toast(qaKind === "in" ? "💰 Ingreso guardado" : "💸 Gasto guardado");
