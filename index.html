@@ -1800,7 +1800,7 @@
     var rows = list.map(function (u) {
       meas.font = "700 19px system-ui, sans-serif";
       var titleLines = wrapText(meas, u.ev.title, W - padX * 2 - 24);
-      return { u: u, titleLines: titleLines, h: 18 + titleLines.length * 24 + 20 + 18 };
+      return { u: u, titleLines: titleLines, h: 18 + titleLines.length * 24 + 20 + 36 };
     });
     var headH = 96, footH = 46, gap = 12;
     var totalH = headH + rows.reduce(function (a, r) { return a + r.h + gap; }, 0) + footH;
