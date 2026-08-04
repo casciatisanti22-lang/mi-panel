@@ -761,25 +761,12 @@
   <!-- ===== DATOS ===== -->
   <section class="panel" id="p-datos">
     <div class="card">
-      <h2>🔄 Sincronizar entre dispositivos</h2>
-      <p class="note" style="margin-bottom:12px">
-        Poné un <b>código secreto</b> inventado por vos (el mismo en la PC y en el celu).
-        Tus datos se guardan en la nube de Google y se sincronizan solos entre todos tus aparatos.
-      </p>
-      <div class="field">
-        <label class="f" for="syncCode">Tu código secreto</label>
-        <input id="syncCode" type="text" placeholder="Ej: santi-natacion-2026" autocomplete="off" spellcheck="false" />
+      <h2>👤 Tu cuenta</h2>
+      <p class="note" id="accountInfo" style="margin-bottom:12px">No conectada.</p>
+      <div class="data-actions">
+        <button class="btn sm ghost" id="signOutBtn" hidden>Cerrar sesión</button>
       </div>
-      <div class="data-actions" style="margin-top:11px; align-items:center">
-        <button class="btn sm" id="syncConnect">Conectar</button>
-        <button class="btn sm ghost" id="syncDisconnect" hidden>Desconectar</button>
-        <span class="sync-badge" id="syncBadge">Sin conectar</span>
-      </div>
-      <p class="note" id="syncStatus" style="margin-top:11px">Con esto, entrás desde cualquier aparato con el mismo código y ves siempre lo último.</p>
-      <div class="data-actions" style="margin-top:12px">
-        <button class="btn sm ghost" id="lockNow">🔒 Bloquear ahora</button>
-      </div>
-      <p class="note" style="margin-top:8px">Al abrir la app pide tu código. “Bloquear ahora” hace que este aparato vuelva a pedirlo la próxima vez.</p>
+      <p class="note" style="margin-top:10px">Entrás con tu cuenta de Google. Tus datos son <b>privados</b> y aparecen en cualquier dispositivo donde inicies sesión.</p>
     </div>
     <div class="card">
       <h2>Tus datos</h2>
@@ -848,25 +835,22 @@
   </div>
 </div>
 
-<div id="applock" hidden>
+<div id="applock">
   <div class="lock-box">
     <div class="lock-mark">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
     </div>
     <h2>Tu Panel</h2>
-    <p>Ingresá tu código para entrar</p>
-    <form id="applockForm">
-      <input id="applockInput" type="password" placeholder="Código secreto" autocomplete="off" />
-      <label class="lock-remember"><input type="checkbox" id="applockRemember" checked /> Recordar en este aparato</label>
-      <button class="btn" type="submit" id="applockBtn">Entrar</button>
-      <div id="applockErr" class="lock-err" hidden></div>
-    </form>
+    <p>Entrá con tu cuenta de Google para ver tus datos en cualquier dispositivo.</p>
+    <button class="btn" id="googleBtn" type="button">Entrar con Google</button>
+    <div id="loginErr" class="lock-err" hidden></div>
   </div>
 </div>
 
 <!-- Firebase (solo carga en el sitio web; en la vista previa de Claude no, y no pasa nada) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 
 <script>
 (function () {
@@ -2012,9 +1996,8 @@
     data.expenses = []; data.events = []; data.savings = []; data.fixed = []; data.templates = []; save(); renderAll(); toast("Todo borrado");
   });
 
-  // ---------- sincronización (Firebase) ----------
-  var SYNC_KEY = "miPanel_syncCode";
-  var db = null, docRef = null, unsub = null, applyingRemote = false, fbTried = false;
+  // ---------- cuenta: login con Google (Firebase Auth) ----------
+  var db = null, auth = null, docRef = null, unsub = null, applyingRemote = false, fbTried = false;
 
   function initFirebase() {
     if (db) return true;
@@ -2024,27 +2007,17 @@
     try {
       if (!firebase.apps || !firebase.apps.length) firebase.initializeApp(firebaseConfig);
       db = firebase.firestore();
+      auth = firebase.auth ? firebase.auth() : null;
       return true;
     } catch (e) { return false; }
-  }
-
-  function setSyncUI(connected, msg) {
-    var badge = $("syncBadge");
-    badge.textContent = connected ? "Conectado ✓" : "Sin conectar";
-    badge.classList.toggle("on", !!connected);
-    $("syncConnect").hidden = connected;
-    $("syncDisconnect").hidden = !connected;
-    if (msg) $("syncStatus").textContent = msg;
   }
 
   function warnSyncFail(e) {
     var msg = (e && e.message) ? e.message : "";
     if (/1048576|maximum|size|exceed|too large|longer than|bytes/i.test(msg))
       toast("⚠️ No se sincronizó: hay demasiadas fotos. Quitá alguna.");
-    else
-      toast("⚠️ No se pudo sincronizar en la nube");
+    else toast("⚠️ No se pudo guardar en la nube");
   }
-
   function pushCloud() {
     if (!docRef) return;
     var payload = { name: data.name, budget: +data.budget || 0, savingsGoal: +data.savingsGoal || 0, cardCloseDay: +data.cardCloseDay || 25, cardPaidUntil: data.cardPaidUntil || "", expenses: data.expenses, events: data.events, savings: data.savings || [], fixed: data.fixed || [], templates: data.templates || [], _ts: Date.now() };
@@ -2052,32 +2025,17 @@
     try { p = docRef.set(payload); } catch (e) { warnSyncFail(e); return; }
     if (p && p.catch) p.catch(warnSyncFail);
   }
-
   function afterRemote() {
     $("greet").textContent = "Hola, " + (data.name || "Santi");
     renderAll();
   }
 
-  function connectSync(code) {
-    code = (code || "").trim();
-    if (!code) { setSyncUI(false, "Escribí un código para conectar."); return; }
-    if (!initFirebase()) { setSyncUI(false, "La sincronización solo funciona en el sitio web publicado (no en esta vista previa)."); return; }
-    try { localStorage.setItem(SYNC_KEY, code); } catch (e) {}
-    docRef = db.collection("paneles").doc(code);
-    setSyncUI(true, "Conectando…");
-    docRef.get().then(function (snap) {
-      var d = snap.exists ? snap.data() : null;
-      if (d && (d.expenses || d.events)) {
-        applyingRemote = true; data = normalize(d); save(); applyingRemote = false; afterRemote();
-      } else {
-        pushCloud();
-      }
-      listenCloud();
-      setSyncUI(true, "✅ Conectado como “" + code + "”. Se sincroniza solo entre todos tus dispositivos con este código.");
-    }).catch(function (e) {
-      setSyncUI(false, "No se pudo conectar: " + (e && e.message ? e.message : e));
-    });
+  function showLogin(msg) {
+    var le = $("loginErr");
+    if (msg) { le.textContent = msg; le.hidden = false; } else { le.hidden = true; }
+    $("applock").hidden = false;
   }
+  function hideLogin() { $("applock").hidden = true; }
 
   function listenCloud() {
     if (unsub) unsub();
@@ -2088,66 +2046,56 @@
     }, function () {});
   }
 
-  function disconnectSync() {
+  function onSignedIn(user) {
+    hideLogin();
+    $("accountInfo").textContent = "Conectada como " + (user.email || user.displayName || "tu cuenta");
+    $("signOutBtn").hidden = false;
+    docRef = db.collection("users").doc(user.uid);
+    docRef.get().then(function (snap) {
+      var d = snap.exists ? snap.data() : null;
+      if (d && (d.expenses || d.events)) {
+        applyingRemote = true; data = normalize(d); save(); applyingRemote = false; afterRemote();
+      } else {
+        pushCloud(); // primera vez: subo lo que haya local
+      }
+      listenCloud();
+    }).catch(function (e) { warnSyncFail(e); });
+  }
+  function onSignedOut() {
     if (unsub) { unsub(); unsub = null; }
     docRef = null;
-    try { localStorage.removeItem(SYNC_KEY); } catch (e) {}
-    setSyncUI(false, "Desconectado. Los datos quedan solo en este aparato.");
+    $("accountInfo").textContent = "No conectada.";
+    $("signOutBtn").hidden = true;
+    showLogin();
   }
 
-  $("syncConnect").addEventListener("click", function () { connectSync($("syncCode").value); });
-  $("syncDisconnect").addEventListener("click", disconnectSync);
-
-  // ---------- candado: pedir código al abrir ----------
-  var TRUST_KEY = "miPanel_trusted";
-  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
-  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
-  function lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
-
-  function showApplock() { $("applockErr").hidden = true; $("applock").hidden = false; setTimeout(function () { try { $("applockInput").focus(); } catch (e) {} }, 60); }
-  function hideApplock() { $("applock").hidden = true; }
-  function lockErr(msg) { var e = $("applockErr"); e.textContent = msg; e.hidden = false; }
-
-  function tryUnlock() {
-    var code = ($("applockInput").value || "").trim();
-    var remember = $("applockRemember").checked;
-    if (!code) { $("applockInput").focus(); return; }
-    $("applockErr").hidden = true;
-    var saved = lsGet(SYNC_KEY);
-    if (saved) { // este aparato ya conocía un código (funciona sin internet)
-      if (code === saved) doUnlock(code, remember); else lockErr("Código incorrecto");
-      return;
-    }
-    if (!initFirebase()) { lockErr("Sin conexión para verificar. Entrá con internet la primera vez."); return; }
-    $("applockBtn").textContent = "Verificando…";
-    db.collection("paneles").doc(code).get().then(function (snap) {
-      $("applockBtn").textContent = "Entrar";
-      if (snap.exists) doUnlock(code, remember); else lockErr("Código incorrecto");
-    }).catch(function () { $("applockBtn").textContent = "Entrar"; lockErr("No se pudo verificar, probá de nuevo"); });
+  function signInGoogle() {
+    if (!initFirebase() || !auth) { showLogin("No se pudo iniciar sesión (¿estás sin internet?)."); return; }
+    var provider = new firebase.auth.GoogleAuthProvider();
+    $("googleBtn").disabled = true;
+    auth.signInWithPopup(provider).then(function () {
+      $("googleBtn").disabled = false;
+    }).catch(function (e) {
+      $("googleBtn").disabled = false;
+      var code = e && e.code;
+      if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
+      if (code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment") {
+        try { auth.signInWithRedirect(provider); } catch (e2) { showLogin("No se pudo abrir Google."); }
+        return;
+      }
+      showLogin("No se pudo entrar: " + (e && e.message ? e.message : code));
+    });
   }
-  function doUnlock(code, remember) {
-    lsSet(SYNC_KEY, code);
-    if (remember) lsSet(TRUST_KEY, "1"); else lsDel(TRUST_KEY);
-    $("applockInput").value = "";
-    hideApplock();
-    $("syncCode").value = code;
-    connectSync(code);
-  }
-  $("applockForm").addEventListener("submit", function (e) { e.preventDefault(); tryUnlock(); });
-  $("applockBtn").addEventListener("click", function (e) { e.preventDefault(); tryUnlock(); });
-  $("lockNow").addEventListener("click", function () { lsDel(TRUST_KEY); showApplock(); });
+  $("googleBtn").addEventListener("click", signInGoogle);
+  $("signOutBtn").addEventListener("click", function () { if (auth) auth.signOut(); });
 
-  // Decidir al abrir: aparato confiable entra directo; si no, pide el código.
-  (function () {
-    var savedCode = lsGet(SYNC_KEY);
-    if (savedCode) $("syncCode").value = savedCode;
-    if (lsGet(TRUST_KEY) === "1") {
-      hideApplock();
-      if (savedCode) connectSync(savedCode);
-    } else {
-      showApplock();
-    }
-  })();
+  // Arranque: mostrar la app según haya sesión o no.
+  if (initFirebase() && auth) {
+    auth.getRedirectResult().catch(function () {});
+    auth.onAuthStateChanged(function (user) { if (user) onSignedIn(user); else onSignedOut(); });
+  } else {
+    hideLogin(); // sin Firebase (vista previa/sin internet): la app funciona con datos locales
+  }
 
   // ---------- carga rápida (botón flotante ＋) ----------
   var LASTCAT_KEY = "miPanel_lastCat";
