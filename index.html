@@ -201,6 +201,10 @@
   .ms-val.pos { color: var(--train); }
 
   .budget { margin-top: 16px; }
+  .sav-goal { margin: 14px 0 4px; }
+  .search-bar { margin-bottom: 12px; }
+  .search-bar input { border-radius: 999px; padding-left: 14px; }
+  .bar-fill.goal { background: var(--train); }
   .budget-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
   .bar-track { height: 12px; border-radius: 999px; background: var(--surface-2); overflow: hidden; border: 1px solid var(--border); }
   .bar-fill { height: 100%; width: 0; border-radius: 999px; background: var(--train); transition: width .4s ease; }
@@ -464,6 +468,14 @@
     display: inline-flex; align-items: center; gap: 5px;
   }
   .qa-cat.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .qa-templates { display: flex; gap: 7px; flex-wrap: wrap; }
+  .qa-templates:empty { display: none; }
+  .qa-tpl {
+    font-family: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
+    border: 1px solid var(--accent); background: var(--accent-soft); color: var(--accent-ink);
+    border-radius: 999px; padding: 6px 6px 6px 11px; display: inline-flex; align-items: center; gap: 6px;
+  }
+  .qa-tpl .tpl-x { width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,.14); display: grid; place-items: center; font-size: .62rem; }
 
   @media (max-width: 560px) {
     .wrap { padding: 14px 11px 88px; }
@@ -632,6 +644,16 @@
         <span class="big num" id="savTotal">US$ 0</span>
         <span class="cur">USD</span>
       </div>
+      <div class="sav-goal">
+        <div class="budget-head">
+          <span class="f" style="text-transform:none">🎯 Meta de ahorro</span>
+          <button class="mini" id="savGoalSet" type="button">Definir</button>
+        </div>
+        <div id="savGoalBar" hidden>
+          <div class="bar-track"><div class="bar-fill" id="savGoalFill"></div></div>
+          <div class="budget-info"><span id="savGoalText" class="num"></span><button class="mini" id="savGoalEdit" type="button">Editar</button></div>
+        </div>
+      </div>
       <form class="save-form" id="savForm">
         <div class="seg" id="savKind">
           <button type="button" class="seg-btn active" data-kind="in">＋ Sumar</button>
@@ -645,6 +667,9 @@
       </div></div>
     </div>
 
+    <div class="search-bar">
+      <input id="expSearch" type="search" placeholder="🔎 Buscar en todos los meses (comercio, categoría…)" autocomplete="off" />
+    </div>
     <div id="expList"></div>
   </section>
 
@@ -743,7 +768,8 @@
         o importar datos de otro lado.
       </p>
       <div class="data-actions">
-        <button class="btn sm" id="exportBtn">⬇ Exportar datos</button>
+        <button class="btn sm" id="exportBtn">⬇ Respaldo (JSON)</button>
+        <button class="btn sm ghost" id="exportCsvBtn">📊 CSV (Excel)</button>
         <button class="btn sm ghost" id="importBtn">⬆ Importar datos</button>
         <input type="file" id="importFile" accept="application/json" hidden />
         <button class="btn sm ghost" id="renameBtn">✎ Cambiar nombre</button>
@@ -776,6 +802,7 @@
   <div class="qa-back" id="qaBack"></div>
   <div class="qa-sheet">
     <div class="qa-head"><h3>Cargar rápido</h3><button type="button" id="qaClose" aria-label="Cerrar">✕</button></div>
+    <div class="qa-templates" id="qaTemplates"></div>
     <div class="seg" id="qaKind">
       <button type="button" class="seg-btn active" data-kind="out">💸 Gasto</button>
       <button type="button" class="seg-btn" data-kind="in">💰 Ingreso</button>
@@ -790,7 +817,10 @@
     </div>
     <div class="qa-cats" id="qaCats"></div>
     <input id="qaNote" type="text" placeholder="Detalle (opcional)" />
-    <button class="btn" id="qaSave">Guardar</button>
+    <div class="data-actions">
+      <button class="btn" id="qaSave" type="button" style="flex:1">Guardar</button>
+      <button class="btn ghost sm" id="qaSaveTpl" type="button" title="Guardar como plantilla">💾</button>
+    </div>
   </div>
 </div>
 
@@ -834,16 +864,17 @@
       var d = JSON.parse(localStorage.getItem(KEY));
       if (d && typeof d === "object") return normalize(d);
     } catch (e) {}
-    return { name: "", budget: 0, expenses: [], events: [], savings: [], fixed: [] };
+    return { name: "", budget: 0, savingsGoal: 0, expenses: [], events: [], savings: [], fixed: [], templates: [] };
   }
 
   // Normaliza datos y migra eventos viejos (fecha/hora) al nuevo formato con "slots".
   function normalize(d) {
     d = d || {};
-    var out = { name: d.name || "", budget: +d.budget || 0, expenses: [], events: [], savings: [], fixed: [] };
+    var out = { name: d.name || "", budget: +d.budget || 0, savingsGoal: +d.savingsGoal || 0, expenses: [], events: [], savings: [], fixed: [], templates: [] };
     if (Array.isArray(d.expenses)) out.expenses = d.expenses;
     if (Array.isArray(d.savings)) out.savings = d.savings;
     if (Array.isArray(d.fixed)) out.fixed = d.fixed;
+    if (Array.isArray(d.templates)) out.templates = d.templates;
     if (Array.isArray(d.events)) out.events = d.events.map(migrateEvent);
     return out;
   }
@@ -957,6 +988,7 @@
   };
   var CAT_ICON = { Comida:"🍽️", Transporte:"🚌", Salud:"💊", Hogar:"🏠", Ocio:"🎬", Servicios:"💡", Otros:"🧾",
     Sueldo:"💼", Venta:"🏷️", Regalo:"🎁" };
+  var expSearch = "";
 
   // ---------- refs ----------
   var $ = function (id) { return document.getElementById(id); };
@@ -1055,6 +1087,7 @@
     $("expAmount").value = ""; $("expNote").value = ""; setDefaultDates();
   }
   $("expCancel").addEventListener("click", resetExpForm);
+  $("expSearch").addEventListener("input", function () { expSearch = this.value; renderExpenses(); });
 
   $("expForm").addEventListener("submit", function (e) {
     e.preventDefault();
@@ -1095,12 +1128,21 @@
 
   function renderExpenses() {
     var box = $("expList");
-    var list = data.expenses.filter(function (x) { return (x.date || "").slice(0, 7) === viewMonth; })
-      .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
-    var head = '<div class="group-label" style="margin-top:0">Movimientos · ' + monthLabel(viewMonth) + '</div>';
-    if (!list.length) {
-      box.innerHTML = head + emptyBox("💸", viewMonth === curYM() ? "Todavía no cargaste nada este mes" : "Sin movimientos en " + monthLabel(viewMonth));
-      return;
+    var q = (expSearch || "").trim().toLowerCase(), list, head;
+    if (q) {
+      list = data.expenses.filter(function (x) {
+        return ((x.note || "") + " " + (x.cat || "") + " " + x.amount).toLowerCase().indexOf(q) >= 0;
+      }).sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+      head = '<div class="group-label" style="margin-top:0">Resultados · ' + list.length + '</div>';
+      if (!list.length) { box.innerHTML = head + emptyBox("🔎", "No encontré nada con “" + esc(expSearch) + "”"); return; }
+    } else {
+      list = data.expenses.filter(function (x) { return (x.date || "").slice(0, 7) === viewMonth; })
+        .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+      head = '<div class="group-label" style="margin-top:0">Movimientos · ' + monthLabel(viewMonth) + '</div>';
+      if (!list.length) {
+        box.innerHTML = head + emptyBox("💸", viewMonth === curYM() ? "Todavía no cargaste nada este mes" : "Sin movimientos en " + monthLabel(viewMonth));
+        return;
+      }
     }
     var html = "";
     list.forEach(function (x) {
@@ -1220,6 +1262,18 @@
     return (data.savings || []).reduce(function (s, m) { return s + (m.kind === "out" ? -m.amount : m.amount); }, 0);
   }
 
+  function setSavingsGoal() {
+    var cur = +data.savingsGoal || 0;
+    var v = prompt("¿Cuánto querés juntar? (en US$, poné 0 para quitar la meta)", cur || "");
+    if (v === null) return;
+    var n = parseFloat(v);
+    data.savingsGoal = isNaN(n) || n < 0 ? 0 : n;
+    save(); renderSavings();
+    toast(data.savingsGoal ? "🎯 Meta guardada" : "Meta quitada");
+  }
+  $("savGoalSet").addEventListener("click", setSavingsGoal);
+  $("savGoalEdit").addEventListener("click", setSavingsGoal);
+
   function renderSavings() {
     var tot = savingsTotal();
     var el = $("savTotal");
@@ -1227,6 +1281,15 @@
     el.className = "big num";
     el.style.color = tot < 0 ? "var(--med)" : "var(--train)";
     var ss = $("savSum"); if (ss) ss.textContent = usd(tot);
+    var goal = +data.savingsGoal || 0;
+    if (goal > 0) {
+      $("savGoalSet").hidden = true; $("savGoalBar").hidden = false;
+      var pct = Math.max(0, Math.min(100, Math.round(tot / goal * 100)));
+      $("savGoalFill").style.width = pct + "%";
+      $("savGoalText").textContent = usd(Math.max(0, tot)) + " de " + usd(goal) + "  ·  " + pct + "%" + (tot >= goal ? "  🎉" : "");
+    } else {
+      $("savGoalSet").hidden = false; $("savGoalBar").hidden = true;
+    }
     var list = (data.savings || []).slice().reverse();
     var box = $("savList");
     if (!list.length) { box.innerHTML = ""; return; }
@@ -1808,6 +1871,21 @@
     a.click(); URL.revokeObjectURL(url);
     toast("Datos exportados");
   });
+  $("exportCsvBtn").addEventListener("click", function () {
+    var rows = [["Fecha", "Tipo", "Categoria", "Monto", "Detalle"]];
+    data.expenses.slice().sort(function (a, b) { return a.date < b.date ? -1 : 1; }).forEach(function (x) {
+      rows.push([x.date, x.kind === "in" ? "Ingreso" : "Gasto", x.cat, x.amount, x.note || ""]);
+    });
+    var csv = rows.map(function (r) {
+      return r.map(function (c) { var s = String(c == null ? "" : c); return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(";");
+    }).join("\r\n");
+    var blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+    var url = URL.createObjectURL(blob), a = document.createElement("a");
+    var now = new Date();
+    a.href = url; a.download = "mis-gastos-" + now.getFullYear() + String(now.getMonth() + 1).padStart(2, "0") + ".csv";
+    a.click(); URL.revokeObjectURL(url);
+    toast("📊 CSV exportado (abrilo con Excel)");
+  });
   $("importBtn").addEventListener("click", function () { $("importFile").click(); });
   $("importFile").addEventListener("change", function (e) {
     var file = e.target.files[0]; if (!file) return;
@@ -1829,7 +1907,7 @@
   });
   $("wipeBtn").addEventListener("click", function () {
     if (!confirm("¿Seguro que querés borrar TODOS los gastos, ahorros y eventos? No se puede deshacer.")) return;
-    data.expenses = []; data.events = []; data.savings = []; data.fixed = []; save(); renderAll(); toast("Todo borrado");
+    data.expenses = []; data.events = []; data.savings = []; data.fixed = []; data.templates = []; save(); renderAll(); toast("Todo borrado");
   });
 
   // ---------- sincronización (Firebase) ----------
@@ -1867,7 +1945,7 @@
 
   function pushCloud() {
     if (!docRef) return;
-    var payload = { name: data.name, budget: +data.budget || 0, expenses: data.expenses, events: data.events, savings: data.savings || [], fixed: data.fixed || [], _ts: Date.now() };
+    var payload = { name: data.name, budget: +data.budget || 0, savingsGoal: +data.savingsGoal || 0, expenses: data.expenses, events: data.events, savings: data.savings || [], fixed: data.fixed || [], templates: data.templates || [], _ts: Date.now() };
     var p;
     try { p = docRef.set(payload); } catch (e) { warnSyncFail(e); return; }
     if (p && p.catch) p.catch(warnSyncFail);
@@ -1987,10 +2065,44 @@
     document.querySelectorAll("#qaKind .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.kind === "out"); });
     $("qaAmount").value = ""; $("qaNote").value = "";
     qaRenderCats();
+    renderTemplates();
     $("qa").hidden = false;
     setTimeout(function () { try { $("qaAmount").focus(); } catch (e) {} }, 80);
   }
   function closeQa() { $("qa").hidden = true; }
+
+  function renderTemplates() {
+    var box = $("qaTemplates");
+    box.innerHTML = (data.templates || []).map(function (tp) {
+      return '<button type="button" class="qa-tpl" data-tpl="' + tp.id + '">' +
+        (CAT_ICON[tp.cat] || "") + ' ' + esc(tp.name) + (tp.amount ? ' · ' + fmt(tp.amount) : '') +
+        '<span class="tpl-x" data-tplx="' + tp.id + '">✕</span></button>';
+    }).join("");
+  }
+  $("qaTemplates").addEventListener("click", function (e) {
+    var del = e.target.closest("[data-tplx]");
+    if (del) {
+      data.templates = (data.templates || []).filter(function (t) { return t.id !== del.dataset.tplx; });
+      save(); renderTemplates(); return;
+    }
+    var b = e.target.closest("[data-tpl]"); if (!b) return;
+    var tp = (data.templates || []).filter(function (t) { return t.id === b.dataset.tpl; })[0]; if (!tp) return;
+    qaKind = "out";
+    document.querySelectorAll("#qaKind .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.kind === "out"); });
+    qaCat = tp.cat; qaRenderCats();
+    if (tp.amount) $("qaAmount").value = tp.amount;
+    $("qaNote").value = tp.name;
+  });
+  $("qaSaveTpl").addEventListener("click", function () {
+    var amt = parseFloat($("qaAmount").value);
+    var def = $("qaNote").value.trim() || qaCat;
+    var name = prompt("Nombre de la plantilla (ej: Café, Súper):", def);
+    if (!name || !name.trim()) return;
+    data.templates = data.templates || [];
+    data.templates.push({ id: uid(), name: name.trim(), cat: qaCat, amount: isNaN(amt) ? 0 : amt });
+    save(); renderTemplates();
+    toast("💾 Plantilla guardada");
+  });
 
   $("fab").addEventListener("click", openQa);
   $("qaClose").addEventListener("click", closeQa);
