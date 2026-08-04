@@ -4,12 +4,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="theme-color" content="#8c5e3c">
-<link rel="manifest" href="./manifest.webmanifest">
-<link rel="icon" href="./icon-192.png">
-<link rel="apple-touch-icon" href="./icon-180.png">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Mi Panel">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
@@ -138,6 +132,19 @@
   .today-banner .tb-list { font-size: .82rem; opacity: .95; margin-top: 2px; }
 
   /* ---------- Event calendar actions ---------- */
+  /* ---------- Filtro + compartir eventos ---------- */
+  .ev-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .ev-filters { display: flex; gap: 6px; overflow-x: auto; flex: 1; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+  .ev-filters::-webkit-scrollbar { height: 0; }
+  .chip-btn {
+    flex: none; font-family: inherit; font-size: .78rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+    border: 1px solid var(--border); background: var(--surface); color: var(--muted);
+    border-radius: 999px; padding: 6px 12px; transition: .15s;
+  }
+  .chip-btn:hover { color: var(--text); border-color: var(--border-strong); }
+  .chip-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  #shareEvents { flex: none; }
+
   .ev-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
   .mini {
     font-family: inherit; font-size: .74rem; font-weight: 600; cursor: pointer;
@@ -146,24 +153,6 @@
   }
   .mini:hover { border-color: var(--accent); color: var(--accent-ink); }
   .mini:active { transform: translateY(1px); }
-
-  /* ---------- Filtro de eventos + compartir ---------- */
-  .ev-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
-  .ev-filter { display: flex; gap: 7px; flex-wrap: wrap; flex: 1; min-width: 0; }
-  .fbtn {
-    font-family: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
-    border: 1px solid var(--border); background: var(--surface); color: var(--muted);
-    border-radius: 999px; padding: 7px 13px; transition: .15s; white-space: nowrap;
-  }
-  .fbtn:hover { border-color: var(--border-strong); color: var(--text); }
-  .fbtn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
-  .btn-share {
-    font-family: inherit; font-size: .8rem; font-weight: 650; cursor: pointer; flex: none;
-    border: 0; background: var(--train); color: #fff; border-radius: 999px; padding: 8px 14px;
-    transition: .15s; display: inline-flex; align-items: center; gap: 5px;
-  }
-  .btn-share:hover { filter: brightness(1.06); }
-  .btn-share:active { transform: translateY(1px); }
 
   /* ---------- Segmented (una vez / cada semana) ---------- */
   .seg { display: flex; gap: 4px; background: var(--surface-2); border: 1px solid var(--border); padding: 3px; border-radius: 10px; }
@@ -361,18 +350,6 @@
   .del:hover { color: var(--med); background: var(--med-soft); }
   .del svg { width: 16px; height: 16px; }
   .item.done { opacity: .55; }
-  .edit {
-    border: 0; background: transparent; color: var(--faint); cursor: pointer; padding: 6px; border-radius: 8px;
-    flex: none; display: grid; place-items: center; transition: .15s;
-  }
-  .edit:hover { color: var(--accent-ink); background: var(--accent-soft); }
-  .edit svg { width: 16px; height: 16px; }
-
-  /* ---------- Navegación de meses ---------- */
-  .month-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 13px; }
-  .month-nav #mLabel { font-size: .95rem; font-weight: 650; letter-spacing: -.01em; }
-  .nav-arrow { min-width: 36px; padding: 5px 10px; font-size: 1.05rem; line-height: 1; }
-  .nav-arrow:disabled { opacity: .3; cursor: default; }
 
   .group-label {
     font-size: .72rem; text-transform: uppercase; letter-spacing: .07em; color: var(--faint);
@@ -538,11 +515,7 @@
     </div>
 
     <div class="card" id="moneyCard">
-      <div class="month-nav">
-        <button class="mini nav-arrow" id="mPrev" type="button" aria-label="Mes anterior">‹</button>
-        <span id="mLabel">Este mes</span>
-        <button class="mini nav-arrow" id="mNext" type="button" aria-label="Mes siguiente">›</button>
-      </div>
+      <h2>Este mes</h2>
       <div class="money-row">
         <div class="money-stat"><div class="ms-lbl">Ingresos</div><div class="ms-val in num" id="mIn">$0</div></div>
         <div class="money-stat"><div class="ms-lbl">Gastos</div><div class="ms-val out num" id="mOut">$0</div></div>
@@ -590,7 +563,7 @@
   <!-- ===== EVENTOS ===== -->
   <section class="panel" id="p-eventos">
     <div class="card">
-      <h2 id="evFormTitle">Agregar evento</h2>
+      <h2>Agregar evento</h2>
       <form id="evForm">
         <div class="field full">
           <label class="f" for="evTitle">¿Qué es?</label>
@@ -630,23 +603,18 @@
           </div>
           <div class="thumbs" id="attachThumbs"></div>
         </div>
-        <div class="data-actions">
-          <button class="btn" type="submit" id="evSubmit">Guardar evento</button>
-          <button class="btn ghost" type="button" id="evCancel" hidden>Cancelar</button>
-        </div>
+        <button class="btn" type="submit">Guardar evento</button>
       </form>
     </div>
-
     <div class="ev-toolbar">
-      <div class="ev-filter" id="evFilter">
-        <button type="button" class="fbtn active" data-f="all">Todos</button>
-        <button type="button" class="fbtn" data-f="med">🩺 Médicos</button>
-        <button type="button" class="fbtn" data-f="train">🏋️ Entrenamiento</button>
-        <button type="button" class="fbtn" data-f="other">📌 Otros</button>
+      <div class="ev-filters" id="evFilters">
+        <button type="button" class="chip-btn active" data-f="all">Todos</button>
+        <button type="button" class="chip-btn" data-f="med">🩺 Médico</button>
+        <button type="button" class="chip-btn" data-f="train">🏋️ Entreno</button>
+        <button type="button" class="chip-btn" data-f="other">📌 Otro</button>
       </div>
-      <button type="button" class="btn-share" id="shareAll">📤 Compartir</button>
+      <button type="button" class="btn sm" id="shareEvents">📤 Compartir</button>
     </div>
-
     <div id="evList"></div>
   </section>
 
@@ -871,6 +839,7 @@
   };
   var CAT_ICON = { Comida:"🍽️", Transporte:"🚌", Salud:"💊", Hogar:"🏠", Ocio:"🎬", Servicios:"💡", Otros:"🧾",
     Sueldo:"💼", Venta:"🏷️", Regalo:"🎁" };
+  var evFilter = "all";
 
   // ---------- refs ----------
   var $ = function (id) { return document.getElementById(id); };
@@ -889,14 +858,6 @@
   } catch (e) {}
 
   renderAll();
-
-  // Service worker: permite usar la app sin internet y que quede como app instalada.
-  // Solo corre en el sitio publicado (https); en la vista previa no pasa nada.
-  if ("serviceWorker" in navigator && location.protocol.indexOf("http") === 0) {
-    window.addEventListener("load", function () {
-      navigator.serviceWorker.register("./sw.js").catch(function () {});
-    });
-  }
 
   function todayISO() {
     var t = new Date();
@@ -946,36 +907,10 @@
     fillCats();
   });
 
-  var editingExpId = null;
-
-  function setExpKind(k) {
-    expKind = k;
-    document.querySelectorAll("#expKind .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.kind === k); });
-    fillCats();
-  }
-  function resetExpForm() {
-    editingExpId = null;
-    $("expFormTitle").textContent = "Agregar movimiento";
-    $("expSubmit").textContent = "Guardar";
-    $("expCancel").hidden = true;
-    setExpKind("out");
-    $("expAmount").value = ""; $("expNote").value = ""; setDefaultDates();
-  }
-  $("expCancel").addEventListener("click", resetExpForm);
-
   $("expForm").addEventListener("submit", function (e) {
     e.preventDefault();
     var amt = parseFloat($("expAmount").value);
     if (isNaN(amt) || amt <= 0) { $("expAmount").focus(); return; }
-    if (editingExpId) {
-      var it = data.expenses.filter(function (x) { return x.id === editingExpId; })[0];
-      if (it) { it.kind = expKind; it.amount = amt; it.cat = $("expCat").value; it.date = $("expDate").value; it.note = $("expNote").value.trim(); }
-      resetExpForm();
-      save(); renderAll();
-      toast("✏️ Movimiento actualizado");
-      return;
-    }
-    viewMonth = curYM(); // al cargar algo nuevo, volvemos al mes actual para verlo
     data.expenses.push({ id: uid(), kind: expKind, amount: amt, cat: $("expCat").value, date: $("expDate").value, note: $("expNote").value.trim() });
     save();
     $("expAmount").value = ""; $("expNote").value = "";
@@ -983,32 +918,12 @@
     toast(expKind === "in" ? "💰 Ingreso guardado" : "💸 Gasto guardado");
   });
 
-  function editExpense(id) {
-    var x = data.expenses.filter(function (e) { return e.id === id; })[0]; if (!x) return;
-    editingExpId = id;
-    setExpKind(x.kind === "in" ? "in" : "out");
-    $("expCat").value = x.cat;
-    $("expAmount").value = x.amount;
-    $("expDate").value = x.date;
-    $("expNote").value = x.note || "";
-    $("expFormTitle").textContent = "Editar movimiento";
-    $("expSubmit").textContent = "Guardar cambios";
-    $("expCancel").hidden = false;
-    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e2) {}
-    $("expAmount").focus();
-  }
-
   function isIncome(x) { return x.kind === "in"; }
 
   function renderExpenses() {
     var box = $("expList");
-    var list = data.expenses.filter(function (x) { return (x.date || "").slice(0, 7) === viewMonth; })
-      .sort(function (a, b) { return a.date < b.date ? 1 : -1; });
-    var head = '<div class="group-label" style="margin-top:0">Movimientos · ' + monthLabel(viewMonth) + '</div>';
-    if (!list.length) {
-      box.innerHTML = head + emptyBox("💸", viewMonth === curYM() ? "Todavía no cargaste nada este mes" : "Sin movimientos en " + monthLabel(viewMonth));
-      return;
-    }
+    var list = data.expenses.slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+    if (!list.length) { box.innerHTML = emptyBox("💸", "Todavía no cargaste nada"); return; }
     var html = "";
     list.forEach(function (x) {
       var inc = isIncome(x);
@@ -1017,30 +932,14 @@
         '<div class="body"><div class="title">' + (esc(x.note) || x.cat) + '</div>' +
         '<div class="meta"><span class="chip cat">' + (inc ? "Ingreso · " : "") + x.cat + '</span><span>' + fmtDate(x.date) + '</span></div></div>' +
         '<div class="amount num' + (inc ? ' in' : '') + '">' + (inc ? "+" : "−") + fmt(x.amount) + '</div>' +
-        editBtn("exp", x.id) + delBtn("exp", x.id) + '</div>';
+        delBtn("exp", x.id) + '</div>';
     });
-    box.innerHTML = head + html;
+    box.innerHTML = html;
   }
 
   // ---------- resumen de dinero + presupuesto + gráfico ----------
-  var MONTHS_LONG = ["enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
-  var viewMonth = curYM(); // mes que estás mirando en la tarjeta "dinero" (puede ser uno pasado)
-
-  function monthLabel(ym) {
-    if (ym === curYM()) return "Este mes";
-    var p = (ym || "").split("-");
-    return (MONTHS_LONG[+p[1] - 1] || "") + " " + p[0];
-  }
-  function shiftMonth(ym, delta) {
-    var p = ym.split("-");
-    var d = new Date(+p[0], +p[1] - 1 + delta, 1);
-    return d.getFullYear() + "-" + pad(d.getMonth() + 1);
-  }
-  $("mPrev").addEventListener("click", function () { viewMonth = shiftMonth(viewMonth, -1); renderMoney(); renderExpenses(); });
-  $("mNext").addEventListener("click", function () { if (viewMonth >= curYM()) return; viewMonth = shiftMonth(viewMonth, 1); renderMoney(); renderExpenses(); });
-
-  function monthTotals(ym) {
-    ym = ym || curYM();
+  function monthTotals() {
+    var ym = new Date().getFullYear() + "-" + pad(new Date().getMonth() + 1);
     var inc = 0, out = 0, byCat = {};
     data.expenses.forEach(function (x) {
       if ((x.date || "").slice(0, 7) !== ym) return;
@@ -1051,9 +950,7 @@
   }
 
   function renderMoney() {
-    $("mLabel").textContent = monthLabel(viewMonth);
-    $("mNext").disabled = viewMonth >= curYM();
-    var t = monthTotals(viewMonth), bal = t.inc - t.out;
+    var t = monthTotals(), bal = t.inc - t.out;
     $("mIn").textContent = fmt(t.inc);
     $("mOut").textContent = fmt(t.out);
     var mb = $("mBal");
@@ -1177,15 +1074,12 @@
   function resetSlots() { slotRows.innerHTML = ""; slotRows.appendChild(makeSlotRow()); }
   resetSlots();
 
-  function setRepMode(mode) {
-    repMode = mode;
-    document.querySelectorAll("#evRepeat .seg-btn").forEach(function (x) { x.classList.toggle("active", x.dataset.rep === mode); });
-    $("addSlot").textContent = repMode === "weekly" ? "＋ Agregar otro día" : "＋ Agregar otra fecha";
-    resetSlots();
-  }
   $("evRepeat").addEventListener("click", function (e) {
     var b = e.target.closest(".seg-btn"); if (!b) return;
-    setRepMode(b.dataset.rep);
+    repMode = b.dataset.rep;
+    document.querySelectorAll("#evRepeat .seg-btn").forEach(function (x) { x.classList.toggle("active", x === b); });
+    $("addSlot").textContent = repMode === "weekly" ? "＋ Agregar otro día" : "＋ Agregar otra fecha";
+    resetSlots();
   });
   $("addSlot").addEventListener("click", function () { slotRows.appendChild(makeSlotRow()); });
 
@@ -1203,33 +1097,12 @@
     return out;
   }
 
-  var editingEvId = null;
-
-  function resetEvForm() {
-    editingEvId = null;
-    $("evTitle").value = ""; $("evNote").value = "";
-    pendingFiles = []; renderThumbs();
-    setRepMode("once");
-    $("evFormTitle").textContent = "Agregar evento";
-    $("evSubmit").textContent = "Guardar evento";
-    $("evCancel").hidden = true;
-  }
-  $("evCancel").addEventListener("click", resetEvForm);
-
   $("evForm").addEventListener("submit", function (e) {
     e.preventDefault();
     var title = $("evTitle").value.trim();
     var slots = collectSlots();
     if (!title) { $("evTitle").focus(); return; }
     if (!slots.length) { toast("Agregá al menos un día"); return; }
-    if (editingEvId) {
-      var ev0 = findEvent(editingEvId);
-      if (ev0) { ev0.title = title; ev0.type = $("evType").value; ev0.note = $("evNote").value.trim(); ev0.repeat = repMode; ev0.slots = slots; ev0.files = pendingFiles.slice(); }
-      resetEvForm();
-      save(); renderAll();
-      toast("✏️ Evento actualizado");
-      return;
-    }
     var ev = { id: uid(), title: title, type: $("evType").value, note: $("evNote").value.trim(), repeat: repMode, slots: slots, files: pendingFiles.slice() };
     data.events.push(ev);
     save();
@@ -1239,25 +1112,6 @@
     renderAll();
     notifyEvent(ev);
   });
-
-  function editEvent(id) {
-    var ev = findEvent(id); if (!ev) return;
-    editingEvId = id;
-    $("evTitle").value = ev.title || "";
-    $("evType").value = ev.type || "other";
-    $("evNote").value = ev.note || "";
-    setRepMode(isWeeklyEvent(ev) ? "weekly" : "once"); // deja los slots en 1 vacío
-    slotRows.innerHTML = "";
-    (ev.slots || []).forEach(function (s) { slotRows.appendChild(makeSlotRow(s)); });
-    if (!slotRows.children.length) slotRows.appendChild(makeSlotRow());
-    pendingFiles = (ev.files || []).slice();
-    renderThumbs();
-    $("evFormTitle").textContent = "Editar evento";
-    $("evSubmit").textContent = "Guardar cambios";
-    $("evCancel").hidden = false;
-    try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch (e2) {}
-    $("evTitle").focus();
-  }
 
   // ---------- adjuntar fotos ----------
   var pendingFiles = [];
@@ -1320,30 +1174,22 @@
     var file = ev.files[+f.dataset.file]; if (file) openLightbox(file.dataUrl);
   });
 
-  var evFilter = "all";
-  function eventsFiltered() {
-    return data.events.filter(function (ev) { return evFilter === "all" || ev.type === evFilter; });
+  function upcomingEvents() {
+    var now = new Date();
+    return data.events
+      .filter(function (ev) { return evFilter === "all" || (ev.type || "other") === evFilter; })
+      .map(function (ev) { return { ev: ev, occ: eventNextOcc(ev, now) }; })
+      .filter(function (u) { return u.occ; })
+      .sort(function (a, b) { return a.occ - b.occ; });
   }
-
-  $("evFilter").addEventListener("click", function (e) {
-    var b = e.target.closest(".fbtn"); if (!b) return;
-    evFilter = b.dataset.f;
-    document.querySelectorAll("#evFilter .fbtn").forEach(function (x) { x.classList.toggle("active", x === b); });
-    renderEvents();
-  });
 
   function renderEvents() {
     var box = $("evList");
     if (!data.events.length) { box.innerHTML = emptyBox("📅", "No tenés eventos agendados"); return; }
-    var list = eventsFiltered();
-    if (!list.length) {
-      var tn = (TYPE[evFilter] || TYPE.other).name;
-      box.innerHTML = emptyBox("🔍", "No tenés eventos de tipo “" + tn + "”");
-      return;
-    }
     var now = new Date();
     var upcoming = [], past = [];
-    list.forEach(function (ev) {
+    data.events.forEach(function (ev) {
+      if (evFilter !== "all" && (ev.type || "other") !== evFilter) return;
       var occ = eventNextOcc(ev, now);
       if (occ) upcoming.push({ ev: ev, occ: occ }); else past.push({ ev: ev });
     });
@@ -1359,8 +1205,111 @@
       past.forEach(function (u) { html += evRow(u.ev, null, true); });
       html += '</div>';
     }
+    if (!upcoming.length && !past.length) {
+      html = emptyBox("🔍", "No hay eventos de este tipo");
+    }
     box.innerHTML = html;
   }
+
+  // filtro
+  $("evFilters").addEventListener("click", function (e) {
+    var b = e.target.closest(".chip-btn"); if (!b) return;
+    evFilter = b.dataset.f;
+    document.querySelectorAll("#evFilters .chip-btn").forEach(function (x) { x.classList.toggle("active", x === b); });
+    renderEvents();
+  });
+
+  // ---------- compartir eventos como imagen ----------
+  var FILTER_NAME = { all: "Todos", med: "Médicos", train: "Entrenamientos", other: "Otros" };
+
+  function wrapText(ctx, text, maxW) {
+    var words = (text || "").split(" "), lines = [], line = "";
+    for (var i = 0; i < words.length; i++) {
+      var test = line ? line + " " + words[i] : words[i];
+      if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = words[i]; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    return lines.length ? lines : [""];
+  }
+
+  function drawEventsImage(list) {
+    var s = 2, W = 620, padX = 30;
+    var BG = "#ece3d2", CARD = "#f7f2ea", TX = "#332820", MU = "#7a6a54", BR = "#dccfb8";
+    var TCOL = { med: "#b85a44", train: "#6f7d48", other: "#6d7c86" };
+    var meas = document.createElement("canvas").getContext("2d");
+    // medir alturas
+    var rows = list.map(function (u) {
+      meas.font = "700 19px system-ui, -apple-system, sans-serif";
+      var titleLines = wrapText(meas, u.ev.title, W - padX * 2 - 24);
+      return { u: u, titleLines: titleLines, h: 18 + titleLines.length * 24 + 20 + 18 };
+    });
+    var headH = 96, footH = 46, gap = 12;
+    var totalH = headH + rows.reduce(function (a, r) { return a + r.h + gap; }, 0) + footH;
+
+    var c = document.createElement("canvas");
+    c.width = W * s; c.height = totalH * s;
+    var ctx = c.getContext("2d"); ctx.scale(s, s);
+    ctx.fillStyle = BG; ctx.fillRect(0, 0, W, totalH);
+
+    // header
+    ctx.fillStyle = TX; ctx.textBaseline = "alphabetic";
+    ctx.font = "800 26px system-ui, -apple-system, sans-serif";
+    ctx.fillText("📅 Mis eventos", padX, 48);
+    ctx.fillStyle = MU; ctx.font = "500 15px system-ui, -apple-system, sans-serif";
+    ctx.fillText(FILTER_NAME[evFilter] + " · " + list.length + (list.length === 1 ? " evento" : " eventos"), padX, 74);
+
+    var y = headH;
+    rows.forEach(function (r) {
+      var t = TYPE[r.u.ev.type] || TYPE.other, col = TCOL[r.u.ev.type] || TCOL.other;
+      // tarjeta
+      roundRect(ctx, padX, y, W - padX * 2, r.h, 14); ctx.fillStyle = CARD; ctx.fill();
+      ctx.strokeStyle = BR; ctx.lineWidth = 1; ctx.stroke();
+      // franja de color
+      roundRect(ctx, padX, y, 6, r.h, 3); ctx.fillStyle = col; ctx.fill();
+      var ix = padX + 22, ty = y + 34;
+      ctx.fillStyle = TX; ctx.font = "700 19px system-ui, -apple-system, sans-serif";
+      r.titleLines.forEach(function (ln) { ctx.fillText(ln, ix, ty); ty += 24; });
+      ctx.fillStyle = col; ctx.font = "700 13px system-ui, -apple-system, sans-serif";
+      ctx.fillText(t.icon + " " + t.name.toUpperCase(), ix, ty + 2);
+      ctx.fillStyle = MU; ctx.font = "500 14px system-ui, -apple-system, sans-serif";
+      var meta = scheduleSummary(r.u.ev) + "   ·   " + occLabel(r.u.occ);
+      ctx.fillText(meta, ix, ty + 22);
+      y += r.h + gap;
+    });
+
+    ctx.fillStyle = MU; ctx.font = "500 13px system-ui, -apple-system, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText("Generado con Mi Panel", W / 2, totalH - 18);
+
+    return new Promise(function (resolve) { c.toBlob(function (b) { resolve(b); }, "image/png"); });
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  $("shareEvents").addEventListener("click", function () {
+    var list = upcomingEvents();
+    if (!list.length) { toast("No hay eventos para compartir"); return; }
+    toast("Generando imagen…");
+    drawEventsImage(list).then(function (blob) {
+      var file = new File([blob], "mis-eventos.png", { type: "image/png" });
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: "Mis eventos" }).catch(function () {});
+      } else {
+        var url = URL.createObjectURL(blob), a = document.createElement("a");
+        a.href = url; a.download = "mis-eventos.png"; a.click(); URL.revokeObjectURL(url);
+        toast("Imagen descargada — compartila por WhatsApp");
+      }
+    });
+  });
 
   function evRow(ev, occ, isPast) {
     var t = TYPE[ev.type] || TYPE.other;
@@ -1374,12 +1323,10 @@
       badge = '<span class="chip past">Pasado</span>';
     }
     var weeklyChip = weekly ? '<span class="chip cat">🔁 Cada semana</span>' : '';
-    var actions =
+    var actions = isPast ? '' :
       '<div class="ev-actions">' +
-        (isPast ? '' :
-          '<button class="mini" data-cal="i" data-id="' + ev.id + '">📅 Agendar con avisos</button>' +
-          '<button class="mini" data-cal="g" data-id="' + ev.id + '">Abrir en Google</button>') +
-        '<button class="mini" data-share="' + ev.id + '">📤 Compartir</button>' +
+        '<button class="mini" data-cal="i" data-id="' + ev.id + '">📅 Agendar con avisos</button>' +
+        '<button class="mini" data-cal="g" data-id="' + ev.id + '">Abrir en Google</button>' +
       '</div>';
     var files = (ev.files && ev.files.length) ? '<div class="ev-files">' + ev.files.map(function (f, i) {
       return '<div class="ev-file" data-file="' + i + '" data-evid="' + ev.id + '"><img src="' + f.dataUrl + '" alt="adjunto"></div>';
@@ -1390,7 +1337,7 @@
       '<div class="meta"><span class="chip ' + t.cls + '">' + t.name + '</span>' + weeklyChip +
       '<span>' + esc(summary) + '</span>' + badge +
       (ev.note ? '<span>· ' + esc(ev.note) + '</span>' : '') + '</div>' + actions + files + '</div>' +
-      editBtn("ev", ev.id) + delBtn("ev", ev.id) + '</div>';
+      delBtn("ev", ev.id) + '</div>';
   }
 
   // ---------- today banner ----------
@@ -1500,49 +1447,6 @@
     }
   });
 
-  // ---------- compartir (WhatsApp / menú del celular) ----------
-  // Texto lindo de un evento para mandar por chat.
-  function eventShareText(ev) {
-    var t = TYPE[ev.type] || TYPE.other;
-    var occ = eventNextOcc(ev, new Date());
-    var lines = [t.icon + " " + ev.title + "  (" + t.name + ")"];
-    lines.push((isWeeklyEvent(ev) ? "🔁 " : "🗓️ ") + scheduleSummary(ev));
-    if (occ) lines.push("⏰ Próximo: " + occLabel(occ));
-    if (ev.note) lines.push("📍 " + ev.note);
-    return lines.join("\n");
-  }
-
-  // Usa el menú de compartir del celular (WhatsApp, Telegram, etc.).
-  // En la PC, si no hay menú nativo, abre WhatsApp directo.
-  function shareText(title, body) {
-    if (navigator.share) {
-      navigator.share({ title: title, text: body }).catch(function () {});
-    } else {
-      window.open("https://wa.me/?text=" + encodeURIComponent(body), "_blank");
-    }
-  }
-
-  // Compartir un solo evento.
-  document.addEventListener("click", function (e) {
-    var b = e.target.closest("[data-share]"); if (!b) return;
-    var ev = findEvent(b.dataset.share); if (!ev) return;
-    shareText(ev.title, eventShareText(ev));
-  });
-
-  // Compartir toda la agenda (respeta el filtro elegido).
-  $("shareAll").addEventListener("click", function () {
-    var now = new Date();
-    var list = eventsFiltered()
-      .map(function (ev) { return { ev: ev, occ: eventNextOcc(ev, now) }; })
-      .filter(function (u) { return u.occ; })
-      .sort(function (a, b) { return a.occ - b.occ; });
-    if (!list.length) { toast("No hay eventos próximos para compartir"); return; }
-    var header = "🗓️ Mis próximos eventos" +
-      (evFilter !== "all" ? " · " + (TYPE[evFilter] || TYPE.other).name : "");
-    var body = header + "\n\n" + list.map(function (u) { return eventShareText(u.ev); }).join("\n\n");
-    shareText("Mis eventos", body);
-  });
-
   // ---------- summary ----------
   function renderSummary() {
     var t = monthTotals(), bal = t.inc - t.out;
@@ -1622,7 +1526,7 @@
     }
   });
 
-  function renderAll() { if (!viewMonth) viewMonth = curYM(); renderSummary(); renderMoney(); renderFixed(); renderSavings(); renderToday(); renderExpenses(); renderEvents(); }
+  function renderAll() { renderSummary(); renderMoney(); renderFixed(); renderSavings(); renderToday(); renderExpenses(); renderEvents(); }
 
   // ---------- delete ----------
   document.addEventListener("click", function (e) {
@@ -1693,20 +1597,9 @@
     if (msg) $("syncStatus").textContent = msg;
   }
 
-  function warnSyncFail(e) {
-    var msg = (e && e.message) ? e.message : "";
-    if (/1048576|maximum|size|exceed|too large|longer than|bytes/i.test(msg))
-      toast("⚠️ No se sincronizó: hay demasiadas fotos. Quitá alguna.");
-    else
-      toast("⚠️ No se pudo sincronizar en la nube");
-  }
-
   function pushCloud() {
     if (!docRef) return;
-    var payload = { name: data.name, budget: +data.budget || 0, expenses: data.expenses, events: data.events, savings: data.savings || [], fixed: data.fixed || [], _ts: Date.now() };
-    var p;
-    try { p = docRef.set(payload); } catch (e) { warnSyncFail(e); return; }
-    if (p && p.catch) p.catch(warnSyncFail);
+    try { docRef.set({ name: data.name, budget: +data.budget || 0, expenses: data.expenses, events: data.events, savings: data.savings || [], fixed: data.fixed || [], _ts: Date.now() }); } catch (e) {}
   }
 
   function afterRemote() {
@@ -1810,15 +1703,6 @@
     return '<button class="del" data-kind="' + kind + '" data-id="' + id + '" title="Eliminar" aria-label="Eliminar">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>';
   }
-  function editBtn(kind, id) {
-    return '<button class="edit" data-edit="' + kind + '" data-id="' + id + '" title="Editar" aria-label="Editar">' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>';
-  }
-  document.addEventListener("click", function (e) {
-    var b = e.target.closest("[data-edit]"); if (!b) return;
-    if (b.dataset.edit === "exp") editExpense(b.dataset.id);
-    else if (b.dataset.edit === "ev") editEvent(b.dataset.id);
-  });
   function emptyBox(icon, txt) { return '<div class="empty"><span>' + icon + '</span>' + txt + '</div>'; }
   function esc(s) { return (s || "").replace(/[&<>"']/g, function (c) { return { "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]; }); }
 
